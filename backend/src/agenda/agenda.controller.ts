@@ -3,16 +3,15 @@ import { AgendaService } from './agenda.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
-@Controller('appointments')
+@Controller('agenda')
 export class AgendaController {
   constructor(private readonly agendaService: AgendaService) {}
 
   @Post()
-create(@Body() dto: CreateAppointmentDto) {
-  console.log('📥 Données reçues du frontend :', dto);
-  return this.agendaService.create(dto);
-}
-
+  create(@Body() dto: CreateAppointmentDto) {
+    console.log('📥 Données reçues du frontend :', dto);
+    return this.agendaService.create(dto);
+  }
 
   @Get()
   findAll() {
@@ -29,8 +28,8 @@ create(@Body() dto: CreateAppointmentDto) {
     return this.agendaService.update(id, dto);
   }
 
-@Delete(':id')
-remove(@Param('id') id: string) {
-  return this.agendaService.remove(id);
-}
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.agendaService.remove(id);
+  }
 }

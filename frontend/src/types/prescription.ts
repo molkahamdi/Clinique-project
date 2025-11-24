@@ -1,4 +1,5 @@
 export interface PrescriptionItem {
+  urgent: unknown;
   id?: string;
   medicationName: string;
   dosage: string;

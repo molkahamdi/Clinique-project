@@ -15,13 +15,18 @@ interface RoleGuardProps {
 export default function RoleGuard({ 
   children, 
   allowedRoles, 
-  fallbackPath = '/dashboard' 
+  fallbackPath = '/unauthorized' 
 }: RoleGuardProps) {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && isAuthenticated && user) {
+    if (!loading) {
+      if (!isAuthenticated || !user) {
+        router.push('/login');
+        return;
+      }
+
       const hasRequiredRole = allowedRoles.includes(user.role);
       
       if (!hasRequiredRole) {
@@ -39,29 +44,11 @@ export default function RoleGuard({
   }
 
   if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Accès non autorisé</h2>
-          <p className="text-gray-600">Veuillez vous connecter pour accéder à cette page.</p>
-        </div>
-      </div>
-    );
+    return null; // La redirection est gérée dans useEffect
   }
 
   if (!allowedRoles.includes(user.role)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Accès refusé</h2>
-          <p className="text-gray-600">
-            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
-            <br />
-            <span className="text-sm">Rôle requis: {allowedRoles.join(' ou ')}</span>
-          </p>
-        </div>
-      </div>
-    );
+    return null; // La redirection est gérée dans useEffect
   }
 
   return <>{children}</>;

@@ -11,6 +11,7 @@ import { RdvModule } from './rdv/rdv.module';
 import { MedicalServicesModule } from './medical-services/medical-services.module';
 import { EquipmentModule } from './equipment/equipment.module';
 import { MedicationsModule } from './medications/medications.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { MedicationsModule } from './medications/medications.module';
     RdvModule,
     MedicalServicesModule,
     EquipmentModule,
-    MedicationsModule
+    MedicationsModule,
+    AppointmentsModule,
  
   ],
   controllers: [],

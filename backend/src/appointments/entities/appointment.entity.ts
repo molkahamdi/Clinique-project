@@ -10,7 +10,7 @@ export enum AppointmentStatus {
   COMPLETED = 'completed'
 }
 
-@Entity('appointments')
+@Entity('appointments') // Important: même nom de table
 export class Appointment extends TimeStamEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

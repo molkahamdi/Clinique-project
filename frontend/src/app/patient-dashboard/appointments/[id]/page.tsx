@@ -1,0 +1,482 @@
+// app/patient-dashboard/appointments/[id]/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { appointmentService } from '@/services/appointmentService';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Clock, User, MapPin, ArrowLeft, Phone, Mail, FileText } from 'lucide-react';
+import Link from 'next/link';
+
+export default function AppointmentDetailsPage() {
+  const { user } = useAuth();
+  const params = useParams();
+  const router = useRouter();
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+
+  const appointmentId = params.id as string;
+
+  useEffect(() => {
+    const loadAppointment = async () => {
+      try {
+        console.log('🔍 Chargement du rendez-vous:', appointmentId);
+        const data = await appointmentService.getAppointment(appointmentId);
+        console.log('✅ Rendez-vous chargé:', data);
+        setAppointment(data);
+      } catch (error) {
+        console.error('Error loading appointment:', error);
+        alert('Erreur lors du chargement du rendez-vous');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (appointmentId) {
+      loadAppointment();
+    }
+  }, [appointmentId]);
+
+  const handleCancelAppointment = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
+    
+    try {
+      setCancelling(true);
+      const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
+      setAppointment(updatedAppointment);
+      alert('Rendez-vous annulé avec succès');
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      alert('Erreur lors de l\'annulation du rendez-vous');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleRescheduleAppointment = () => {
+    // Rediriger vers la page de prise de rendez-vous avec pré-remplissage
+    router.push(`/appointments/book?reschedule=${appointmentId}`);
+  };
+
+  const getStatusBadge = (status: AppointmentStatus) => {
+    const statusConfig = {
+      [AppointmentStatus.PENDING]: { 
+        label: 'En attente', 
+        variant: 'secondary' as const,
+        description: 'En attente de confirmation'
+      },
+      [AppointmentStatus.CONFIRMED]: { 
+        label: 'Confirmé', 
+        variant: 'default' as const,
+        description: 'Rendez-vous confirmé'
+      },
+      [AppointmentStatus.CANCELLED]: { 
+        label: 'Annulé', 
+        variant: 'destructive' as const,
+        description: 'Rendez-vous annulé'
+      },
+      [AppointmentStatus.COMPLETED]: { 
+        label: 'Terminé', 
+        variant: 'outline' as const,
+        description: 'Consultation terminée'
+      },
+    };
+    
+    const config = statusConfig[status];
+    return (
+      <div className="flex items-center space-x-2">
+        <Badge variant={config.variant}>{config.label}</Badge>
+        <span className="text-sm text-gray-500">{config.description}</span>
+      </div>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    return timeString;
+  };
+
+  const canCancel = appointment?.status === AppointmentStatus.PENDING || 
+                   appointment?.status === AppointmentStatus.CONFIRMED;
+
+  const canReschedule = appointment?.status === AppointmentStatus.PENDING || 
+                       appointment?.status === AppointmentStatus.CONFIRMED;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement des détails...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appointment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Rendez-vous non trouvé</p>
+          <Button onClick={() => router.push('/patient-dashboard')} className="mt-4">
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" size="sm" onClick={() => router.push('/patient-dashboard')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Détails du rendez-vous</h1>
+                <p className="text-gray-600">Informations complètes sur votre rendez-vous</p>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              {appointment.status === AppointmentStatus.COMPLETED && (
+                <Button asChild variant="outline">
+                  <Link href={`/prescriptions?patientId=${user?.id}`}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Voir les ordonnances
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Informations principales */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Carte principale du rendez-vous */}
+            <Card>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardTitle className="flex items-center justify-between">
+                  <span>Votre Rendez-vous Médical</span>
+                  {getStatusBadge(appointment.status)}
+                </CardTitle>
+                <CardDescription>
+                  Consultation avec le Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                {/* Date et heure */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Date</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {formatDate(appointment.date)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Heure</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {formatTime(appointment.time)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Motif de consultation */}
+                {appointment.reason && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium text-gray-900">Motif de la consultation</h3>
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-gray-700">{appointment.reason}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes supplémentaires */}
+                {appointment.notes && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium text-gray-900">Notes supplémentaires</h3>
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-gray-700">{appointment.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Informations de suivi */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-gray-900">Informations de suivi</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Créé le:</span>
+                      <p>{new Date(appointment.createdAt).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Dernière mise à jour:</span>
+                      <p>{new Date(appointment.updatedAt).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            {(canCancel || canReschedule) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Actions disponibles</CardTitle>
+                  <CardDescription>
+                    Gérer votre rendez-vous
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {canCancel && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleCancelAppointment}
+                        disabled={cancelling}
+                        className="flex-1"
+                      >
+                        {cancelling ? 'Annulation...' : 'Annuler le rendez-vous'}
+                      </Button>
+                    )}
+                    {canReschedule && (
+                      <Button 
+                        onClick={handleRescheduleAppointment}
+                        className="flex-1"
+                      >
+                        Reporter le rendez-vous
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Informations d'annulation */}
+                  {canCancel && (
+                    <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-sm text-orange-800">
+                        ⚠️ L'annulation doit être effectuée au moins 24 heures à l'avance. 
+                        En cas d'urgence, contactez directement le cabinet.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Rendez-vous annulé */}
+            {appointment.status === AppointmentStatus.CANCELLED && (
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="text-red-900">Rendez-vous annulé</CardTitle>
+                  <CardDescription className="text-red-700">
+                    Ce rendez-vous a été annulé
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-red-800">
+                      Pour prendre un nouveau rendez-vous, veuillez consulter la page de réservation.
+                    </p>
+                    <Button asChild>
+                      <Link href="/appointments/book">
+                        Prendre un nouveau rendez-vous
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Rendez-vous terminé */}
+            {appointment.status === AppointmentStatus.COMPLETED && (
+              <Card className="border-green-200 bg-green-50">
+                <CardHeader>
+                  <CardTitle className="text-green-900">Consultation terminée</CardTitle>
+                  <CardDescription className="text-green-700">
+                    Cette consultation a été réalisée avec succès
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-green-800">
+                      Votre consultation avec le Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName} 
+                      a été réalisée le {formatDate(appointment.date)}.
+                    </p>
+                    <div className="flex space-x-3">
+                      <Button asChild variant="outline">
+                        <Link href={`/prescriptions?patientId=${user?.id}`}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Consulter mes ordonnances
+                        </Link>
+                      </Button>
+                      <Button asChild>
+                        <Link href="/appointments/book">
+                          Prendre un nouveau rendez-vous
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar - Informations du médecin et patient */}
+          <div className="space-y-6">
+            {/* Informations du médecin */}
+            <Card>
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <CardTitle className="flex items-center">
+                  <User className="w-5 h-5 mr-2 text-purple-600" />
+                  Votre Médecin
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                    <User className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg">
+                      Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {appointment.doctor?.specialization || 'Médecin généraliste'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t">
+                  {appointment.doctor?.email && (
+                    <div className="flex items-center space-x-3 text-sm">
+                      <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Email</p>
+                        <p className="text-gray-600 break-all">{appointment.doctor.email}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-3 text-sm">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Lieu de consultation</p>
+                      <p className="text-gray-600">Clinique Médicale Principal</p>
+                      <p className="text-xs text-gray-500">123 Avenue de la Santé, 75000 Paris</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                    📍 <strong>Conseil :</strong> Merci d'arriver 10 minutes avant l'heure du rendez-vous 
+                    et de vous présenter à l'accueil avec votre carte vitale.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Informations patient */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Vos informations</CardTitle>
+                <CardDescription>
+                  Informations utilisées pour la prise de rendez-vous
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Nom complet</p>
+                    <p className="font-semibold text-gray-900">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                  </div>
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Email</p>
+                    <p className="font-semibold text-gray-900">{user?.email}</p>
+                  </div>
+                  <Mail className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Téléphone</p>
+                    <p className="font-semibold text-gray-900">
+                      {user?.phone || 'Non renseigné'}
+                    </p>
+                  </div>
+                  <Phone className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className="pt-3 border-t">
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <Link href="/patient-dashboard/profile">
+                      Modifier mes informations
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Aide et support */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Besoin d'aide ?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm space-y-2">
+                  <p className="text-gray-600">
+                    Pour toute question concernant votre rendez-vous :
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    <p>📞 <strong>Standard :</strong> 01 23 45 67 89</p>
+                    <p>🕒 <strong>Horaires :</strong> Lun-Ven 8h-19h</p>
+                    <p>📧 <strong>Email :</strong> contact@clinique.com</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  Contacter le support
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

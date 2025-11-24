@@ -32,6 +32,7 @@ export interface RegisterDto {
 }
 
 export interface AuthResponse {
+  access_token: any;
   redirectTo(redirectTo: any): unknown;
   token: string;
   id: string;
@@ -45,6 +46,8 @@ export interface AuthResponse {
 }
 
 export interface LoggedUser {
+  createdAt: string;
+  updatedAt: string;
   id: string;
   email: string;
   role: UserRole;

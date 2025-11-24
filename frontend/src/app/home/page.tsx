@@ -54,14 +54,7 @@ export default function HomePage() {
 </nav>
 
 
-    {/* CTA Button */}
-    <Button
-  asChild
-  size="lg"
-  className="hidden md:inline-flex bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white hover:bg-white hover:text-[#0f172a] font-bold rounded-xl shadow-lg transition"
->
-  <Link href="/agenda">Book Appointment</Link>
-</Button>
+   
   </div>
 </header>
 

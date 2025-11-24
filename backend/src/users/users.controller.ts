@@ -22,6 +22,9 @@ import { Roles } from 'src/shared/decorators/roles.decorator';
 //@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
     constructor(private readonly usersService: UsersService) { }
+
+
+    
     @Get()
     getUsers(@Query('role') role?: userRole) {
         return this.usersService.getUsers(role);
@@ -65,4 +68,9 @@ export class UsersController {
     ) {
         return this.usersService.deleteUserById(id, role);
     }
+    @Get('doctors')
+@Roles(userRole.PATIENT, userRole.ADMIN, userRole.RECEP)
+async getDoctors() {
+  return this.usersService.getUsers(userRole.DOCTOR);
+}
 }

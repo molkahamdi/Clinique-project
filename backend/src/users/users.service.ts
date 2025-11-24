@@ -172,4 +172,51 @@ export class UsersService {
   async assignClinicToReceptioniste(userId: string) {
     const user = await this.findUserByIdWithoutRole(userId) as Receptionist;
   }
+
+
+   
+   async findUserProfile(id: string) {
+    console.log('🔍 Recherche du profil utilisateur ID:', id);
+    
+    // Recherche dans toutes les tables
+    let user = await this.adminRepo.findOne({ 
+      where: { id },
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+    });
+    
+    if (!user) {
+      user = await this.recepRepo.findOne({ 
+        where: { id },
+        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+      });
+    }
+    
+    if (!user) {
+      user = await this.patientRepo.findOne({ 
+        where: { id },
+        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+      });
+    }
+    
+    if (!user) {
+      user = await this.doctorRepo.findOne({ 
+        where: { id },
+        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+      });
+    }
+    
+    if (!user) {
+      console.error('❌ Utilisateur non trouvé avec ID:', id);
+      throw new NotFoundException(`User with id ${id} does not exist`);
+    }
+    
+    console.log('✅ Profil utilisateur trouvé:', {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      role: user.role
+    });
+    
+    return user;
+  }
+
 }
