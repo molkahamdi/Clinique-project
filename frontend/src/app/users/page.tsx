@@ -194,10 +194,7 @@ export default function UsersPage() {
               </div>
               
               <div className="flex items-center space-x-3">
-                <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 transition-colors">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter
-                </Button>
+               
                 <Link href="/users/create">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200">
                     <UserPlus className="h-4 w-4 mr-2" />
@@ -306,10 +303,7 @@ export default function UsersPage() {
                     </SelectContent>
                   </Select>
                   
-                  <Button variant="outline" className="h-11 border-gray-300 hover:bg-gray-50 text-gray-700">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importer
-                  </Button>
+                 
                 </div>
               </div>
 
@@ -330,52 +324,15 @@ export default function UsersPage() {
             </CardContent>
           </Card>
 
-          {/* Section d'actions rapides */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <UserPlus className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Ajout en masse</h3>
-                    <p className="text-sm text-gray-600">Importez plusieurs utilisateurs via CSV</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          
 
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-green-100 p-3 rounded-lg">
-                    <Download className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Export des données</h3>
-                    <p className="text-sm text-gray-600">Téléchargez la liste complète des utilisateurs</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
 
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-purple-100 p-3 rounded-lg">
-                    <Settings className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Paramètres avancés</h3>
-                    <p className="text-sm text-gray-600">Gérez les permissions et accès</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
+            
           </div>
         </div>
-      </div>
+      
     </RoleGuard>
   );
 }

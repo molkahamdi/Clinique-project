@@ -19,6 +19,7 @@ export default function PatientDashboard() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -53,6 +54,8 @@ export default function PatientDashboard() {
     if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
     
     try {
+      setCancellingId(appointmentId);
+      
       // Mettre à jour l'état local immédiatement pour un feedback visuel rapide
       setAppointments(prev => prev.map(apt => 
         apt.id === appointmentId 
@@ -60,22 +63,26 @@ export default function PatientDashboard() {
           : apt
       ));
 
-      await appointmentService.cancelAppointment(appointmentId);
+      // Appel API pour annuler le rendez-vous
+      const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
+      console.log('✅ Rendez-vous annulé avec succès:', updatedAppointment);
       
-      // Recharger les données pour s'assurer de la synchronisation
-      await loadAppointments();
-      
-      alert('Rendez-vous annulé avec succès !');
-    } catch (error) {
-      // En cas d'erreur, annuler le changement local
+      // Mettre à jour avec les données fraîches de l'API
       setAppointments(prev => prev.map(apt => 
         apt.id === appointmentId 
-          ? { ...apt, status: AppointmentStatus.PENDING }
+          ? updatedAppointment
           : apt
       ));
       
+      alert('Rendez-vous annulé avec succès !');
+    } catch (error) {
+      // En cas d'erreur, annuler le changement local et recharger
+      await loadAppointments();
+      
       console.error('Error cancelling appointment:', error);
       alert('Erreur lors de l\'annulation du rendez-vous');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -358,9 +365,17 @@ export default function PatientDashboard() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleCancelAppointment(appointment.id)}
+                              disabled={cancellingId === appointment.id}
                               className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
                             >
-                              Annuler
+                              {cancellingId === appointment.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700 mr-2"></div>
+                                  Annulation...
+                                </>
+                              ) : (
+                                'Annuler'
+                              )}
                             </Button>
                           )}
                           <Button variant="outline" size="sm" asChild>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { appointmentService, Doctor } from '@/services/appointmentService';
+import { appointmentService } from '@/services/appointmentService';
+import { DoctorInfo } from '@/types/appointment';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,13 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Calendar, Clock, User, Stethoscope, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, Stethoscope, AlertCircle, GraduationCap } from 'lucide-react';
 
 export default function NewAppointmentPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
   const [doctorsLoading, setDoctorsLoading] = useState(true);
   const [formData, setFormData] = useState({
     date: '',
@@ -106,6 +107,11 @@ export default function NewAppointmentPage() {
     }
   };
 
+  // Fonction utilitaire pour obtenir la spécialité d'un médecin
+  const getDoctorSpeciality = (doctor: DoctorInfo): string => {
+    return doctor.speciality || doctor.specialization || 'Médecin généraliste';
+  };
+
   // Date minimale (aujourd'hui)
   const today = new Date().toISOString().split('T')[0];
 
@@ -175,9 +181,12 @@ export default function NewAppointmentPage() {
                         <SelectContent>
                           {doctors.map((doctor) => (
                             <SelectItem key={doctor.id} value={doctor.id}>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col space-y-1">
                                 <span className="font-medium">Dr. {doctor.firstName} {doctor.lastName}</span>
-                                <span className="text-sm text-slate-500">{doctor.specialization}</span>
+                                <div className="flex items-center space-x-1 text-sm text-slate-500">
+                                  <GraduationCap className="h-3 w-3" />
+                                  <span>{getDoctorSpeciality(doctor)}</span>
+                                </div>
                               </div>
                             </SelectItem>
                           ))}

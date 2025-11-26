@@ -24,19 +24,28 @@ export class UsersService {
   ) { }
 
   async getUsers(role?: userRole, ids?: string[]) {
-    const where = {
-      where: ids && { id: In(ids) },
-    };
+    const where = ids ? { id: In(ids) } : {};
+    
     if (role === userRole.ADMIN || role === userRole.SUPER_ADMIN)
-      return this.adminRepo.find(where);
-    if (role === userRole.RECEP) return this.recepRepo.find({ ...where, relations: { clinique: true } });
-    if (role === userRole.PATIENT) return this.patientRepo.find(where);
-    if (role === userRole.DOCTOR) return this.doctorRepo.find({ ...where, relations: { clinique: true } });
+      return this.adminRepo.find({ where });
+    if (role === userRole.RECEP) 
+      return this.recepRepo.find({ where, relations: { clinique: true } });
+    if (role === userRole.PATIENT) 
+      return this.patientRepo.find({ where });
+    if (role === userRole.DOCTOR) 
+      return this.doctorRepo.find({ 
+        where, 
+        relations: { clinique: true }
+      });
+    
     return [
-      ...(await this.adminRepo.find(where)),
-      ...(await this.recepRepo.find(where)),
-      ...(await this.patientRepo.find(where)),
-      ...(await this.doctorRepo.find(where)),
+      ...(await this.adminRepo.find({ where })),
+      ...(await this.recepRepo.find({ where })),
+      ...(await this.patientRepo.find({ where })),
+      ...(await this.doctorRepo.find({ 
+        where, 
+        relations: { clinique: true }
+      })),
     ];
   }
 
@@ -50,12 +59,15 @@ export class UsersService {
         'User with this email or phone number already exists',
       );
     }
-    const createdUser = this.recepRepo.create({
-      ...userDto,
-      role: userRole.RECEP,
-    });
-    const savedUser = await this.recepRepo.save(createdUser);
-    return savedUser;
+    const receptionist = new Receptionist();
+    receptionist.firstName = userDto.firstName;
+    receptionist.lastName = userDto.lastName;
+    receptionist.email = userDto.email;
+    receptionist.phone = userDto.phone;
+    receptionist.password = userDto.password;
+    receptionist.role = userRole.RECEP;
+    
+    return await this.recepRepo.save(receptionist);
   }
 
   async createPatient(userDto: CreateUserDto) {
@@ -68,12 +80,15 @@ export class UsersService {
         'User with this email or phone number already exists',
       );
     }
-    const createdUser = this.patientRepo.create({
-      ...userDto,
-      role: userRole.PATIENT,
-    });
-    const savedUser = await this.patientRepo.save(createdUser);
-    return savedUser;
+    const patient = new Patient();
+    patient.firstName = userDto.firstName;
+    patient.lastName = userDto.lastName;
+    patient.email = userDto.email;
+    patient.phone = userDto.phone;
+    patient.password = userDto.password;
+    patient.role = userRole.PATIENT;
+    
+    return await this.patientRepo.save(patient);
   }
 
   async createAdmin(userDto: CreateUserDto) {
@@ -86,12 +101,15 @@ export class UsersService {
         'User with this email or phone number already exists',
       );
     }
-    const createdUser = this.adminRepo.create({
-      ...userDto,
-      role: userRole.ADMIN,
-    });
-    const savedUser = await this.adminRepo.save(createdUser);
-    return savedUser;
+    const admin = new Admin();
+    admin.firstName = userDto.firstName;
+    admin.lastName = userDto.lastName;
+    admin.email = userDto.email;
+    admin.phone = userDto.phone;
+    admin.password = userDto.password;
+    admin.role = userRole.ADMIN;
+    
+    return await this.adminRepo.save(admin);
   }
 
   async createDoctor(userDto: CreateUserDto) {
@@ -104,19 +122,27 @@ export class UsersService {
         'User with this email or phone number already exists',
       );
     }
-    const createdUser = this.doctorRepo.create({
-      ...userDto,
-      role: userRole.DOCTOR,
-    });
-    const savedUser = await this.doctorRepo.save(createdUser);
-    return savedUser;
+    
+    const doctor = new Doctor();
+    doctor.firstName = userDto.firstName;
+    doctor.lastName = userDto.lastName;
+    doctor.email = userDto.email;
+    doctor.phone = userDto.phone;
+    doctor.password = userDto.password;
+    doctor.role = userRole.DOCTOR;
+    doctor.speciality = userDto.speciality || '';
+    
+    return await this.doctorRepo.save(doctor);
   }
 
   async findByEmail(email: string) {
     let user = await this.adminRepo.findOne({ where: { email } });
     user ??= await this.recepRepo.findOne({ where: { email } });
     user ??= await this.patientRepo.findOne({ where: { email } });
-    user ??= await this.doctorRepo.findOne({ where: { email } });
+    user ??= await this.doctorRepo.findOne({ 
+      where: { email },
+      relations: { clinique: true }
+    });
     
     if (!user) {
       throw new NotFoundException(`User with this email does not exist`);
@@ -124,12 +150,14 @@ export class UsersService {
     return user;
   }
 
-  // ✅ NOUVELLE MÉTHODE AJOUTÉE
   async findUserByIdWithoutRole(id: string) {
     let user = await this.adminRepo.findOne({ where: { id } });
     user ??= await this.recepRepo.findOne({ where: { id } });
     user ??= await this.patientRepo.findOne({ where: { id } });
-    user ??= await this.doctorRepo.findOne({ where: { id } });
+    user ??= await this.doctorRepo.findOne({ 
+      where: { id },
+      relations: { clinique: true }
+    });
     
     if (!user) {
       throw new NotFoundException(`User with this id does not exist`);
@@ -139,14 +167,19 @@ export class UsersService {
 
   async findUserById(id: string, role: userRole) {
     let user: Admin | Receptionist | Patient | Doctor | null = null;
-    if (role === userRole.ADMIN || userRole.SUPER_ADMIN)
+    
+    if (role === userRole.ADMIN || role === userRole.SUPER_ADMIN)
       user = await this.adminRepo.findOne({ where: { id } });
-    if (role === userRole.RECEP)
+    else if (role === userRole.RECEP)
       user = await this.recepRepo.findOne({ where: { id }, relations: { clinique: true } });
-    if (role === userRole.PATIENT)
+    else if (role === userRole.PATIENT)
       user = await this.patientRepo.findOne({ where: { id } });
-    if (role === userRole.DOCTOR)
-      user = await this.doctorRepo.findOne({ where: { id }, relations: { clinique: true } });
+    else if (role === userRole.DOCTOR)
+      user = await this.doctorRepo.findOne({ 
+        where: { id }, 
+        relations: { clinique: true }
+      });
+    
     if (!user)
       throw new NotFoundException(`${role} with this id does not exist`);
     return user;
@@ -155,11 +188,16 @@ export class UsersService {
   async deleteUserById(id: string, role: userRole) {
     await this.findUserById(id, role);
     let result;
-    if (role === userRole.ADMIN || userRole.SUPER_ADMIN)
+    
+    if (role === userRole.ADMIN || role === userRole.SUPER_ADMIN)
       result = await this.adminRepo.delete(id);
-    if (role === userRole.RECEP) result = await this.recepRepo.delete(id);
-    if (role === userRole.PATIENT) result = await this.patientRepo.delete(id);
-    if (role === userRole.DOCTOR) result = await this.doctorRepo.delete(id);
+    else if (role === userRole.RECEP) 
+      result = await this.recepRepo.delete(id);
+    else if (role === userRole.PATIENT) 
+      result = await this.patientRepo.delete(id);
+    else if (role === userRole.DOCTOR) 
+      result = await this.doctorRepo.delete(id);
+    
     if (result?.affected === 0)
       throw new NotFoundException('User with this id does not exist');
     return { message: `${role} deleted successfully` };
@@ -173,35 +211,28 @@ export class UsersService {
     const user = await this.findUserByIdWithoutRole(userId) as Receptionist;
   }
 
-
-   
-   async findUserProfile(id: string) {
+  async findUserProfile(id: string) {
     console.log('🔍 Recherche du profil utilisateur ID:', id);
     
-    // Recherche dans toutes les tables
     let user = await this.adminRepo.findOne({ 
-      where: { id },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+      where: { id }
     });
     
     if (!user) {
       user = await this.recepRepo.findOne({ 
-        where: { id },
-        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+        where: { id }
       });
     }
     
     if (!user) {
       user = await this.patientRepo.findOne({ 
-        where: { id },
-        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+        where: { id }
       });
     }
     
     if (!user) {
       user = await this.doctorRepo.findOne({ 
-        where: { id },
-        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'createdAt', 'updatedAt']
+        where: { id }
       });
     }
     
@@ -218,5 +249,4 @@ export class UsersService {
     
     return user;
   }
-
 }

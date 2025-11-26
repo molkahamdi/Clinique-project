@@ -9,7 +9,7 @@ import { userRole } from 'src/users/entities/user.entity';
 
 @Controller('appointments')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class AppointmentsController {
+export class AppointmentsController { // Assurez-vous que le nom est exactement le même
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
@@ -47,9 +47,10 @@ export class AppointmentsController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.appointmentsService.remove(id);
   }
+
   @Get()
-@Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
-findAll() {
-  return this.appointmentsService.findAll();
-}
+  @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
+  findAll() {
+    return this.appointmentsService.findAll();
+  }
 }

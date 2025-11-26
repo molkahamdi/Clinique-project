@@ -1,16 +1,16 @@
-// app/patient-dashboard/appointments/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { appointmentService } from '@/services/appointmentService';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { Appointment, AppointmentStatus, DoctorInfo } from '@/types/appointment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, User, MapPin, ArrowLeft, Phone, Mail, FileText } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, ArrowLeft, Mail, FileText, GraduationCap, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AppointmentDetailsPage() {
   const { user } = useAuth();
@@ -19,48 +19,73 @@ export default function AppointmentDetailsPage() {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const appointmentId = params.id as string;
 
-  useEffect(() => {
-    const loadAppointment = async () => {
-      try {
-        console.log('🔍 Chargement du rendez-vous:', appointmentId);
-        const data = await appointmentService.getAppointment(appointmentId);
-        console.log('✅ Rendez-vous chargé:', data);
-        setAppointment(data);
-      } catch (error) {
-        console.error('Error loading appointment:', error);
-        alert('Erreur lors du chargement du rendez-vous');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadAppointment = async () => {
+    try {
+      console.log('🔍 Chargement du rendez-vous:', appointmentId);
+      const data = await appointmentService.getAppointment(appointmentId);
+      console.log('✅ Rendez-vous chargé:', data);
+      setAppointment(data);
+      setError(null);
+    } catch (error) {
+      console.error('Error loading appointment:', error);
+      setError('Erreur lors du chargement du rendez-vous');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (appointmentId) {
       loadAppointment();
     }
   }, [appointmentId]);
 
   const handleCancelAppointment = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
+    if (!appointment) return;
+    
+    // Vérifications côté client
+    const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+    const now = new Date();
+    const timeDiff = appointmentDateTime.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    if (hoursDiff < 24) {
+      setError('L\'annulation doit être effectuée au moins 24 heures avant le rendez-vous. Veuillez contacter directement la clinique.');
+      return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est définitive et persistante.')) return;
     
     try {
       setCancelling(true);
+      setError(null);
+      
+      // Appel API pour annuler en base de données
       const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
       setAppointment(updatedAppointment);
-      alert('Rendez-vous annulé avec succès');
-    } catch (error) {
+      
+      console.log('✅ Rendez-vous annulé avec persistance en base de données');
+      alert('Rendez-vous annulé avec succès ! Le statut est maintenant permanent.');
+      
+    } catch (error: any) {
       console.error('Error cancelling appointment:', error);
-      alert('Erreur lors de l\'annulation du rendez-vous');
+      setError(error.message || 'Erreur lors de l\'annulation du rendez-vous');
+      
+      // Recharger les données actuelles
+      await loadAppointment();
     } finally {
       setCancelling(false);
     }
   };
 
   const handleRescheduleAppointment = () => {
-    // Rediriger vers la page de prise de rendez-vous avec pré-remplissage
-    router.push(`/appointments/book?reschedule=${appointmentId}`);
+    if (!appointment) return;
+    
+    router.push(`/patient-dashboard/new-appointment?reschedule=${appointmentId}`);
   };
 
   const getStatusBadge = (status: AppointmentStatus) => {
@@ -68,32 +93,43 @@ export default function AppointmentDetailsPage() {
       [AppointmentStatus.PENDING]: { 
         label: 'En attente', 
         variant: 'secondary' as const,
-        description: 'En attente de confirmation'
+        description: 'En attente de confirmation',
+        className: 'bg-amber-100 text-amber-800 border-amber-200'
       },
       [AppointmentStatus.CONFIRMED]: { 
         label: 'Confirmé', 
         variant: 'default' as const,
-        description: 'Rendez-vous confirmé'
+        description: 'Rendez-vous confirmé',
+        className: 'bg-emerald-100 text-emerald-800 border-emerald-200'
       },
       [AppointmentStatus.CANCELLED]: { 
         label: 'Annulé', 
         variant: 'destructive' as const,
-        description: 'Rendez-vous annulé'
+        description: 'Rendez-vous annulé définitivement',
+        className: 'bg-red-100 text-red-800 border-red-200'
       },
       [AppointmentStatus.COMPLETED]: { 
         label: 'Terminé', 
         variant: 'outline' as const,
-        description: 'Consultation terminée'
+        description: 'Consultation terminée',
+        className: 'bg-blue-100 text-blue-800 border-blue-200'
       },
     };
     
     const config = statusConfig[status];
     return (
       <div className="flex items-center space-x-2">
-        <Badge variant={config.variant}>{config.label}</Badge>
+        <Badge variant={config.variant} className={config.className}>
+          {config.label}
+        </Badge>
         <span className="text-sm text-gray-500">{config.description}</span>
       </div>
     );
+  };
+
+  const getDoctorSpeciality = (doctor?: DoctorInfo): string => {
+    if (!doctor) return 'Médecin généraliste';
+    return doctor.speciality || doctor.specialization || 'Médecin généraliste';
   };
 
   const formatDate = (dateString: string) => {
@@ -114,6 +150,26 @@ export default function AppointmentDetailsPage() {
 
   const canReschedule = appointment?.status === AppointmentStatus.PENDING || 
                        appointment?.status === AppointmentStatus.CONFIRMED;
+
+  const getCancellationInfo = () => {
+    if (!appointment) return { canCancelNow: false, message: '' };
+    
+    const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+    const now = new Date();
+    const timeDiff = appointmentDateTime.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    if (hoursDiff < 24) {
+      return { 
+        canCancelNow: false, 
+        message: 'L\'annulation en ligne n\'est plus possible (moins de 24h). Contactez la clinique.' 
+      };
+    }
+    
+    return { canCancelNow: true, message: '' };
+  };
+
+  const cancellationInfo = getCancellationInfo();
 
   if (loading) {
     return (
@@ -141,7 +197,6 @@ export default function AppointmentDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -155,25 +210,20 @@ export default function AppointmentDetailsPage() {
                 <p className="text-gray-600">Informations complètes sur votre rendez-vous</p>
               </div>
             </div>
-            <div className="flex space-x-2">
-              {appointment.status === AppointmentStatus.COMPLETED && (
-                <Button asChild variant="outline">
-                  <Link href={`/prescriptions?patientId=${user?.id}`}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Voir les ordonnances
-                  </Link>
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Informations principales */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Carte principale du rendez-vous */}
             <Card>
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center justify-between">
@@ -185,7 +235,6 @@ export default function AppointmentDetailsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
-                {/* Date et heure */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -212,7 +261,6 @@ export default function AppointmentDetailsPage() {
                   </div>
                 </div>
 
-                {/* Motif de consultation */}
                 {appointment.reason && (
                   <div className="space-y-3">
                     <h3 className="text-lg font-medium text-gray-900">Motif de la consultation</h3>
@@ -222,7 +270,6 @@ export default function AppointmentDetailsPage() {
                   </div>
                 )}
 
-                {/* Notes supplémentaires */}
                 {appointment.notes && (
                   <div className="space-y-3">
                     <h3 className="text-lg font-medium text-gray-900">Notes supplémentaires</h3>
@@ -232,7 +279,6 @@ export default function AppointmentDetailsPage() {
                   </div>
                 )}
 
-                {/* Informations de suivi */}
                 <div className="space-y-3">
                   <h3 className="text-lg font-medium text-gray-900">Informations de suivi</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -249,7 +295,6 @@ export default function AppointmentDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Actions */}
             {(canCancel || canReschedule) && (
               <Card>
                 <CardHeader>
@@ -260,28 +305,44 @@ export default function AppointmentDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col sm:flex-row gap-4">
-                    {canCancel && (
+                    {canCancel && cancellationInfo.canCancelNow && (
                       <Button 
                         variant="outline" 
                         onClick={handleCancelAppointment}
                         disabled={cancelling}
-                        className="flex-1"
+                        className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
                       >
-                        {cancelling ? 'Annulation...' : 'Annuler le rendez-vous'}
+                        {cancelling ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-700 mr-2"></div>
+                            Annulation...
+                          </>
+                        ) : (
+                          'Annuler le rendez-vous'
+                        )}
                       </Button>
                     )}
                     {canReschedule && (
                       <Button 
                         onClick={handleRescheduleAppointment}
                         className="flex-1"
+                        disabled={!cancellationInfo.canCancelNow}
                       >
                         Reporter le rendez-vous
                       </Button>
                     )}
                   </div>
                   
-                  {/* Informations d'annulation */}
-                  {canCancel && (
+                  {canCancel && !cancellationInfo.canCancelNow && (
+                    <Alert className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {cancellationInfo.message}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {canCancel && cancellationInfo.canCancelNow && (
                     <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                       <p className="text-sm text-orange-800">
                         ⚠️ L'annulation doit être effectuée au moins 24 heures à l'avance. 
@@ -293,13 +354,12 @@ export default function AppointmentDetailsPage() {
               </Card>
             )}
 
-            {/* Rendez-vous annulé */}
             {appointment.status === AppointmentStatus.CANCELLED && (
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
                   <CardTitle className="text-red-900">Rendez-vous annulé</CardTitle>
                   <CardDescription className="text-red-700">
-                    Ce rendez-vous a été annulé
+                    Ce rendez-vous a été annulé le {new Date(appointment.updatedAt).toLocaleDateString('fr-FR')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -308,7 +368,7 @@ export default function AppointmentDetailsPage() {
                       Pour prendre un nouveau rendez-vous, veuillez consulter la page de réservation.
                     </p>
                     <Button asChild>
-                      <Link href="/appointments/book">
+                      <Link href="/patient-dashboard/new-appointment">
                         Prendre un nouveau rendez-vous
                       </Link>
                     </Button>
@@ -317,7 +377,6 @@ export default function AppointmentDetailsPage() {
               </Card>
             )}
 
-            {/* Rendez-vous terminé */}
             {appointment.status === AppointmentStatus.COMPLETED && (
               <Card className="border-green-200 bg-green-50">
                 <CardHeader>
@@ -334,13 +393,13 @@ export default function AppointmentDetailsPage() {
                     </p>
                     <div className="flex space-x-3">
                       <Button asChild variant="outline">
-                        <Link href={`/prescriptions?patientId=${user?.id}`}>
+                        <Link href={`/patient-dashboard/prescriptions`}>
                           <FileText className="w-4 h-4 mr-2" />
                           Consulter mes ordonnances
                         </Link>
                       </Button>
                       <Button asChild>
-                        <Link href="/appointments/book">
+                        <Link href="/patient-dashboard/new-appointment">
                           Prendre un nouveau rendez-vous
                         </Link>
                       </Button>
@@ -351,9 +410,7 @@ export default function AppointmentDetailsPage() {
             )}
           </div>
 
-          {/* Sidebar - Informations du médecin et patient */}
           <div className="space-y-6">
-            {/* Informations du médecin */}
             <Card>
               <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
                 <CardTitle className="flex items-center">
@@ -370,8 +427,9 @@ export default function AppointmentDetailsPage() {
                     <p className="font-semibold text-lg">
                       Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      {appointment.doctor?.specialization || 'Médecin généraliste'}
+                    <p className="text-sm text-gray-600 flex items-center space-x-1">
+                      <GraduationCap className="h-3 w-3" />
+                      <span>{getDoctorSpeciality(appointment.doctor)}</span>
                     </p>
                   </div>
                 </div>
@@ -396,23 +454,12 @@ export default function AppointmentDetailsPage() {
                     </div>
                   </div>
                 </div>
-
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                    📍 <strong>Conseil :</strong> Merci d'arriver 10 minutes avant l'heure du rendez-vous 
-                    et de vous présenter à l'accueil avec votre carte vitale.
-                  </p>
-                </div>
               </CardContent>
             </Card>
 
-            {/* Informations patient */}
             <Card>
               <CardHeader>
                 <CardTitle>Vos informations</CardTitle>
-                <CardDescription>
-                  Informations utilisées pour la prise de rendez-vous
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -432,46 +479,6 @@ export default function AppointmentDetailsPage() {
                   </div>
                   <Mail className="w-5 h-5 text-gray-400" />
                 </div>
-
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Téléphone</p>
-                    <p className="font-semibold text-gray-900">
-                      {user?.phone || 'Non renseigné'}
-                    </p>
-                  </div>
-                  <Phone className="w-5 h-5 text-gray-400" />
-                </div>
-
-                <div className="pt-3 border-t">
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href="/patient-dashboard/profile">
-                      Modifier mes informations
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Aide et support */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Besoin d'aide ?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm space-y-2">
-                  <p className="text-gray-600">
-                    Pour toute question concernant votre rendez-vous :
-                  </p>
-                  <div className="space-y-1 text-xs">
-                    <p>📞 <strong>Standard :</strong> 01 23 45 67 89</p>
-                    <p>🕒 <strong>Horaires :</strong> Lun-Ven 8h-19h</p>
-                    <p>📧 <strong>Email :</strong> contact@clinique.com</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  Contacter le support
-                </Button>
               </CardContent>
             </Card>
           </div>

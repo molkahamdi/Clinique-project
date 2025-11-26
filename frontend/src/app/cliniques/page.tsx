@@ -162,33 +162,9 @@ export default function CliniquesPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Avec Email</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.withEmail}</p>
-                </div>
-                <div className="bg-purple-100 p-3 rounded-lg">
-                  <Mail className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
 
-          <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Avec Téléphone</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.withPhone}</p>
-                </div>
-                <div className="bg-orange-100 p-3 rounded-lg">
-                  <Phone className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    
         </div>
 
         {/* Carte principale */}
