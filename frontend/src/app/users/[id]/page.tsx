@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { GraduationCap } from 'lucide-react';
 
 // Définition explicite du type pour éviter les erreurs d'indexation
 const roleLabels: Record<UserRole, string> = {
@@ -67,8 +68,6 @@ export default function UserDetailPage() {
           <Button variant="outline">← Retour</Button>
         </Link>
         <h1 className="text-3xl font-bold">Détails de l'utilisateur</h1>
-
-      
       </div>
 
       <Card>
@@ -108,6 +107,17 @@ export default function UserDetailPage() {
               </Badge>
             </div>
           </div>
+
+          {/* Affichage de la spécialité pour les docteurs */}
+          {user.role === UserRole.DOCTOR && user.speciality && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Spécialité</label>
+              <div className="flex items-center space-x-2 mt-1">
+                <GraduationCap className="h-4 w-4 text-blue-500" />
+                <p className="text-lg font-medium text-blue-600">{user.speciality}</p>
+              </div>
+            </div>
+          )}
 
           {user.clinique && (
             <div>

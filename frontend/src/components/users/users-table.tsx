@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Edit, Trash2, Mail, Phone, MoreVertical, Eye } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, MoreVertical, Eye, GraduationCap } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +65,8 @@ export function UsersTable({ users, onDelete, isDeleting, searchTerm = '' }: Use
         user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.phone && user.phone.includes(searchTerm))
+        (user.phone && user.phone.includes(searchTerm)) ||
+        (user.speciality && user.speciality.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredUsers(filtered);
     } else {
@@ -122,6 +123,7 @@ export function UsersTable({ users, onDelete, isDeleting, searchTerm = '' }: Use
             <TableHead className="font-semibold text-gray-900 py-4">Utilisateur</TableHead>
             <TableHead className="font-semibold text-gray-900 py-4">Rôle</TableHead>
             <TableHead className="font-semibold text-gray-900 py-4">Contact</TableHead>
+            <TableHead className="font-semibold text-gray-900 py-4">Spécialité</TableHead>
             <TableHead className="font-semibold text-gray-900 py-4">Date de création</TableHead>
             <TableHead className="font-semibold text-gray-900 py-4">Statut</TableHead>
             <TableHead className="font-semibold text-gray-900 py-4 text-right">Actions</TableHead>
@@ -165,6 +167,18 @@ export function UsersTable({ users, onDelete, isDeleting, searchTerm = '' }: Use
                     </div>
                   )}
                 </div>
+              </TableCell>
+
+              {/* CORRECTION ICI : Vérifier si la spécialité n'est pas vide */}
+              <TableCell className="py-4">
+                {user.role === UserRole.DOCTOR && user.speciality && user.speciality.trim() !== '' ? (
+                  <div className="flex items-center space-x-2">
+                    <GraduationCap className="h-3 w-3 text-blue-500" />
+                    <span className="text-sm text-gray-700 font-medium">{user.speciality}</span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-400">-</span>
+                )}
               </TableCell>
 
               <TableCell className="py-4">

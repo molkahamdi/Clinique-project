@@ -132,10 +132,21 @@ export default function DashboardAdminPage() {
     { id: 4, action: "Rapport mensuel généré", time: "Il y a 2 heures", type: "report" },
   ];
 
-  // 🚨 FONCTION DE DÉCONNEXION AVEC CONFIRMATION
-  const handleLogout = () => {
+  // 🚨 FONCTION DE DÉCONNEXION UNIQUE AVEC REDIRECTION VERS /auth/login
+  const handleLogout = async () => {
     if (window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-      logout();
+      try {
+        // Appeler la fonction logout du contexte
+        await logout();
+        
+        // Rediriger vers la page de login après la déconnexion
+        router.push('/home');
+        
+      } catch (error) {
+        console.error('Erreur lors de la déconnexion:', error);
+        // En cas d'erreur, rediriger quand même
+        router.push('/auth/login');
+      }
     }
   };
 
@@ -205,11 +216,6 @@ export default function DashboardAdminPage() {
                       <span>Paramètres</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {/* 🚨 BOUTON DE DÉCONNEXION DANS LE DROPDOWN */}
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Déconnexion</span>
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

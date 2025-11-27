@@ -63,6 +63,25 @@ const roleOptions: RoleOption[] = [
   },
 ];
 
+// Liste des spécialités médicales
+const medicalSpecialities = [
+  'Cardiologie',
+  'Dermatologie',
+  'Gynécologie',
+  'Pédiatrie',
+  'Neurologie',
+  'Orthopédie',
+  'Ophtalmologie',
+  'Psychiatrie',
+  'Radiologie',
+  'Chirurgie',
+  'Médecine générale',
+  'Dentiste',
+  'ORL',
+  'Urologie',
+  'Endocrinologie'
+];
+
 export function UserForm({ 
   onSubmit, 
   isLoading = false, 
@@ -85,6 +104,7 @@ export function UserForm({
   });
 
   const phoneValue = watch('phone');
+  const roleValue = watch('role');
 
   useEffect(() => {
     if (initialData?.role) {
@@ -99,10 +119,9 @@ export function UserForm({
     setShowRoleSelection(false);
   };
 
-  // Fonction de validation du téléphone corrigée
   const validatePhone = (phone: string | undefined) => {
     if (!phone || phone.trim() === '') {
-      return true; // Téléphone optionnel
+      return true;
     }
     
     const cleanedPhone = phone.replace(/\D/g, '');
@@ -114,16 +133,12 @@ export function UserForm({
     return true;
   };
 
-  // Gestionnaire de changement pour le téléphone
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Nettoyer l'entrée pour ne garder que les chiffres
     const cleanedValue = value.replace(/\D/g, '');
     
-    // Mettre à jour la valeur dans le formulaire
     setValue('phone', cleanedValue, { shouldValidate: true });
     
-    // Effacer les erreurs précédentes
     if (errors.phone) {
       clearErrors('phone');
     }
@@ -135,9 +150,14 @@ export function UserForm({
       return;
     }
 
-    // Validation finale du téléphone
     if (data.phone && data.phone.length !== 8) {
       setError('phone', { message: 'Le numéro de téléphone doit contenir exactement 8 chiffres' });
+      return;
+    }
+
+    // Validation spécialité pour les docteurs
+    if (data.role === UserRole.DOCTOR && !data.speciality) {
+      setError('speciality', { message: 'La spécialité est requise pour un médecin' });
       return;
     }
 
@@ -255,17 +275,30 @@ export function UserForm({
             )}
           </div>
 
-          {(selectedRole === UserRole.DOCTOR || selectedRole === UserRole.RECEP) && (
+          {/* Champ spécialité pour les docteurs */}
+          {roleValue === UserRole.DOCTOR && (
             <div>
-              <Label htmlFor="cliniqueId" className="text-sm font-medium text-gray-700">
-                ID de la clinique
+              <Label htmlFor="speciality" className="text-sm font-medium text-gray-700">
+                Spécialité *
               </Label>
-              <Input
-                id="cliniqueId"
-                placeholder="ID de la clinique (optionnel)"
-                {...register('cliniqueId')}
-                className="mt-1"
-              />
+              <Select
+                onValueChange={(value) => setValue('speciality', value)}
+                defaultValue={initialData?.speciality}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Sélectionnez une spécialité" />
+                </SelectTrigger>
+                <SelectContent>
+                  {medicalSpecialities.map((speciality) => (
+                    <SelectItem key={speciality} value={speciality}>
+                      {speciality}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.speciality && (
+                <p className="text-red-600 text-sm mt-1">{errors.speciality.message}</p>
+              )}
             </div>
           )}
         </div>

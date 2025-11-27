@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Appointment, AppointmentStatus } from './entities/appointment.entity';
@@ -7,12 +7,6 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Injectable()
 export class AppointmentsService {
-  async findAll(): Promise<Appointment[]> {
-  return await this.appointmentRepo.find({
-    relations: ['doctor', 'patient'],
-    order: { date: 'ASC', time: 'ASC' }
-  });
-}
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
@@ -45,13 +39,46 @@ export class AppointmentsService {
   }
 
   async update(id: string, updateAppointmentDto: UpdateAppointmentDto): Promise<Appointment> {
+    const appointment = await this.findOne(id);
+    
+    // Vérifier si on tente de modifier un rendez-vous annulé
+    if (appointment.status === AppointmentStatus.CANCELLED && 
+        updateAppointmentDto.status !== AppointmentStatus.CANCELLED) {
+      throw new BadRequestException('Impossible de modifier un rendez-vous annulé');
+    }
+
     await this.appointmentRepo.update(id, updateAppointmentDto);
     const updatedAppointment = await this.findOne(id);
     return updatedAppointment;
   }
 
   async cancel(id: string): Promise<Appointment> {
-    await this.appointmentRepo.update(id, { status: AppointmentStatus.CANCELLED });
+    const appointment = await this.findOne(id);
+    
+    // Vérifier si l'annulation est possible
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      throw new BadRequestException('Ce rendez-vous est déjà annulé');
+    }
+
+    if (appointment.status === AppointmentStatus.COMPLETED) {
+      throw new BadRequestException('Impossible d\'annuler un rendez-vous déjà terminé');
+    }
+
+    // Vérifier si l'annulation est faite à temps (au moins 24h à l'avance)
+    const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+    const now = new Date();
+    const timeDiff = appointmentDateTime.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    if (hoursDiff < 24) {
+      throw new BadRequestException('L\'annulation doit être effectuée au moins 24 heures avant le rendez-vous');
+    }
+
+    // Mettre à jour le statut en base de données
+    await this.appointmentRepo.update(id, { 
+      status: AppointmentStatus.CANCELLED
+    });
+    
     const cancelledAppointment = await this.findOne(id);
     return cancelledAppointment;
   }
@@ -61,5 +88,43 @@ export class AppointmentsService {
     if (result.affected === 0) {
       throw new NotFoundException(`Appointment with ID ${id} not found`);
     }
+  }
+
+  // Méthode pour récupérer tous les rendez-vous
+  async findAll(): Promise<Appointment[]> {
+    return await this.appointmentRepo.find({
+      relations: ['doctor', 'patient'],
+      order: { date: 'DESC', time: 'DESC' }
+    });
+  }
+
+  // Méthode pour confirmer un rendez-vous
+  async confirm(id: string): Promise<Appointment> {
+    const appointment = await this.findOne(id);
+    
+    if (appointment.status !== AppointmentStatus.PENDING) {
+      throw new BadRequestException('Seuls les rendez-vous en attente peuvent être confirmés');
+    }
+
+    await this.appointmentRepo.update(id, { 
+      status: AppointmentStatus.CONFIRMED
+    });
+    
+    return await this.findOne(id);
+  }
+
+  // Méthode pour marquer comme terminé
+  async complete(id: string): Promise<Appointment> {
+    const appointment = await this.findOne(id);
+    
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      throw new BadRequestException('Impossible de terminer un rendez-vous annulé');
+    }
+
+    await this.appointmentRepo.update(id, { 
+      status: AppointmentStatus.COMPLETED
+    });
+    
+    return await this.findOne(id);
   }
 }

@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsOptional, IsArray, ValidateNested, IsDateString } from 'class-validator';
+import { IsString, IsUUID, IsOptional, IsArray, ValidateNested, IsDateString, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePrescriptionItemDto {
@@ -17,6 +17,10 @@ export class CreatePrescriptionItemDto {
   @IsString()
   @IsOptional()
   instructions?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  urgent?: boolean;
 }
 
 export class CreatePrescriptionDto {

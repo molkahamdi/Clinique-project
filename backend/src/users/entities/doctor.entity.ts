@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, Column } from "typeorm";
 import { User } from "./user.entity";
 import { Clinique } from "src/clinique/entities/clinique.entity";
 import { Appointment } from "src/agenda/entities/appointment.entity";
@@ -7,7 +7,10 @@ import { Appointment } from "src/agenda/entities/appointment.entity";
 export class Doctor extends User { 
     @ManyToOne(() => Clinique, (clinique) => clinique.doctors)
     clinique: Clinique;
-    //appointments: any;
-     @OneToMany(() => Appointment, appointment => appointment.doctor)
+
+    @OneToMany(() => Appointment, appointment => appointment.doctor)
     appointments: Appointment[];
+
+    @Column({ nullable: true, default: '' })
+    speciality: string; // Toujours une string, mais peut être vide
 }

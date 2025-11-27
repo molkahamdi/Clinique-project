@@ -18,6 +18,7 @@ export interface User {
   phone?: string;
   password: string;
   role: UserRole;
+  speciality?: string;
   clinique?: any; // Pour les docteurs et réceptionnistes
 }
 
@@ -28,5 +29,6 @@ export interface CreateUserDto {
   phone?: string;
   password: string;
   role: UserRole;
+  speciality?: string;
   cliniqueId?: string; // Optionnel pour l'assignation à une clinique
 }
