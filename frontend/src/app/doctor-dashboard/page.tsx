@@ -8,10 +8,16 @@ import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, User, CalendarDays, FileText, Users, Stethoscope, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, User, CalendarDays, FileText, Users, Stethoscope, RefreshCw, Bell } from 'lucide-react';
 import Link from 'next/link';
 import RoleGuard from '@/components/guards/RoleGuard';
 import { UserRole } from '@/types/auth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function DoctorDashboardContent() {
   const { user } = useAuth();
@@ -27,50 +33,68 @@ function DoctorDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [usingDemoData, setUsingDemoData] = useState(false);
+  const [doctorPending, setDoctorPending] = useState<Appointment[]>([]);
+
 
   useEffect(() => {
     loadDashboardData();
   }, [user?.id]);
 
   const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      console.log('🚀 Démarrage du chargement du dashboard docteur...');
-      
-      if (!user?.id) {
-        console.log('❌ Aucun utilisateur connecté');
-        return;
-      }
-
-      // Charger les rendez-vous du docteur connecté
-      const doctorAppointments = await appointmentService.getDoctorAppointments(user.id);
-      console.log('📊 Rendez-vous du docteur chargés:', doctorAppointments.length);
-      
-      setAppointments(doctorAppointments);
-      
-      // Vérifier si on utilise des données de démonstration
-      if (doctorAppointments.length > 0 && doctorAppointments[0].id?.includes('appt-')) {
-        setUsingDemoData(true);
-        console.log('ℹ️ Utilisation des données de démonstration');
-      }
-
-      // Filtrer et organiser les données
-      filterAndOrganizeAppointments(doctorAppointments);
-      calculateStats(doctorAppointments);
-
-    } catch (error) {
-      console.error('💥 Erreur critique:', error);
-      // En cas d'erreur, utiliser des données de secours
-      const fallbackData = appointmentService.getDemoDoctorAppointments(user?.id || 'doctor-1');
-      setAppointments(fallbackData);
-      filterAndOrganizeAppointments(fallbackData);
-      calculateStats(fallbackData);
-      setUsingDemoData(true);
-    } finally {
-      setLoading(false);
-      console.log('🏁 Chargement du dashboard terminé');
+  try {
+    setLoading(true);
+    console.log('🚀 Démarrage du chargement du dashboard docteur...');
+    
+    if (!user?.id) {
+      console.log('❌ Aucun utilisateur connecté');
+      return;
     }
-  };
+
+    // Charger les rendez-vous du docteur connecté
+    const doctorAppointments = await appointmentService.getDoctorAppointments(user.id);
+    console.log('📊 Rendez-vous du docteur chargés:', doctorAppointments.length);
+    
+    setAppointments(doctorAppointments);
+
+    // 🔔 EXTRA: RDV en attente pour ce docteur
+    const pendingForDoctor = doctorAppointments.filter(
+      (apt) => apt.status === AppointmentStatus.PENDING
+    );
+    setDoctorPending(pendingForDoctor);
+
+    // Vérifier si on utilise des données de démonstration
+    if (doctorAppointments.length > 0 && doctorAppointments[0].id?.includes('appt-')) {
+      setUsingDemoData(true);
+      console.log('ℹ️ Utilisation des données de démonstration');
+    }
+
+    // Filtrer et organiser les données
+    filterAndOrganizeAppointments(doctorAppointments);
+    calculateStats(doctorAppointments);
+
+  } catch (error) {
+    console.error('💥 Erreur critique:', error);
+
+    // En cas d'erreur, utiliser des données de secours
+    const fallbackData = appointmentService.getDemoDoctorAppointments(user?.id || 'doctor-1');
+    setAppointments(fallbackData);
+
+    // 🔔 Extra fallback notification logic
+    const pendingFallback = fallbackData.filter(
+      (apt) => apt.status === AppointmentStatus.PENDING
+    );
+    setDoctorPending(pendingFallback);
+
+    filterAndOrganizeAppointments(fallbackData);
+    calculateStats(fallbackData);
+    setUsingDemoData(true);
+
+  } finally {
+    setLoading(false);
+    console.log('🏁 Chargement du dashboard terminé');
+  }
+};
+
 
   const filterAndOrganizeAppointments = (appointmentsList: Appointment[]) => {
     const today = new Date().toISOString().split('T')[0];
@@ -179,49 +203,78 @@ function DoctorDashboardContent() {
                 </Badge>
               )}
             </div>
-            <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/prescriptions/new">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Nouvelle ordonnance
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link href="/doctor-dashboard/appointments">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Voir tous les RDV
-                </Link>
-              </Button>
-            </div>
+            <div className="flex items-center space-x-3">
+
+  {/* 🔔 Notification Bell */}
+  <DropdownMenu>
+    <DropdownMenuTrigger>
+      <div className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100">
+        <Bell className="w-6 h-6 text-gray-700" />
+        {doctorPending.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            {doctorPending.length}
+          </span>
+        )}
+      </div>
+    </DropdownMenuTrigger>
+
+    <DropdownMenuContent className="w-80">
+      <p className="p-2 font-medium border-b">Notifications</p>
+
+      {doctorPending.length === 0 && (
+        <p className="p-4 text-sm text-muted-foreground">
+          Aucun nouveau rendez-vous.
+        </p>
+      )}
+
+      {doctorPending.map((appt) => (
+        <DropdownMenuItem
+          key={appt.id}
+          className="flex flex-col items-start space-y-1"
+        >
+          <span className="font-semibold text-sm">
+            Nouveau RDV — {appt.patient?.firstName} {appt.patient?.lastName}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            📅 {appt.date} — ⏰ {appt.time}
+          </span>
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+
+  {/* 🔄 Existing buttons */}
+  <Button 
+    variant="outline" 
+    onClick={handleRefresh}
+    disabled={refreshing}
+  >
+    <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+    Actualiser
+  </Button>
+
+  <Button asChild variant="outline">
+    <Link href="/prescriptions/new">
+      <FileText className="w-4 h-4 mr-2" />
+      Nouvelle ordonnance
+    </Link>
+  </Button>
+
+  <Button asChild>
+    <Link href="/doctor-dashboard/appointments">
+      <Calendar className="w-4 h-4 mr-2" />
+      Voir tous les RDV
+    </Link>
+  </Button>
+
+</div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Bannière démo */}
-        {usingDemoData && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <Stethoscope className="h-5 w-5 text-blue-400 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">
-                  Système de Démonstration
-                </h3>
-                <p className="text-sm text-blue-700">
-                  Données simulées utilisées pour la démonstration. Toutes les fonctionnalités sont opérationnelles.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        
 
         {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -294,66 +347,75 @@ function DoctorDashboardContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {todayAppointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-4 text-gray-500">Aucun rendez-vous aujourd'hui</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {todayAppointments.map((appointment) => (
-                    <div key={appointment.id} className="p-4 border rounded-lg bg-white shadow-sm">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline" className="font-mono">
-                            {appointment.time}
-                          </Badge>
-                          {getStatusBadge(appointment.status)}
-                        </div>
-                        <div className="flex space-x-2">
-                          {appointment.status === AppointmentStatus.PENDING && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CONFIRMED)}
-                              >
-                                Confirmer
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CANCELLED)}
-                              >
-                                Annuler
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" asChild>
-                            <Link href={`/prescriptions/new?patientId=${appointment.patientId}&appointmentId=${appointment.id}`}>
-                              Prescrire
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <p className="font-medium text-lg">
-                          <User className="w-4 h-4 inline mr-2 text-gray-400" />
-                          {appointment.patient?.firstName} {appointment.patient?.lastName}
-                        </p>
-                        <p className="text-gray-600">{appointment.reason}</p>
-                        {appointment.notes && (
-                          <p className="text-sm text-gray-500 bg-gray-50 p-2 rounded">
-                            📝 {appointment.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+  {todayAppointments.length === 0 ? (
+    <div className="text-center py-8">
+      <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+      <p className="mt-4 text-gray-500">Aucun rendez-vous aujourd'hui</p>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {todayAppointments.map((appointment) => (
+        <div key={appointment.id} className="p-4 border rounded-xl bg-white shadow-sm">
+
+          {/* Header: Time + Status + Actions */}
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="font-mono">
+                {appointment.time}
+              </Badge>
+              {getStatusBadge(appointment.status)}
+            </div>
+
+            <div className="flex space-x-2">
+              {appointment.status === AppointmentStatus.PENDING && (
+                <>
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CONFIRMED)}
+                  >
+                    Confirmer
+                  </Button>
+
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CANCELLED)}
+                  >
+                    Annuler
+                  </Button>
+                </>
               )}
-            </CardContent>
+
+              <Button size="sm" asChild>
+                <Link href={`/prescriptions/new?patientId=${appointment.patientId}&appointmentId=${appointment.id}`}>
+                  Prescrire
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Patient info */}
+          <p className="font-semibold text-lg">
+            <User className="inline w-4 h-4 mr-2 text-gray-400" />
+            {appointment.patient?.firstName} {appointment.patient?.lastName}
+          </p>
+
+          {/* Reason */}
+          <p className="text-gray-600 mt-1">{appointment.reason}</p>
+
+          {/* Notes */}
+          {appointment.notes && (
+            <div className="mt-3 px-3 py-2 bg-gray-50 text-sm text-gray-700 rounded-md">
+              📝 {appointment.notes}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+</CardContent>
+
           </Card>
 
           {/* Actions rapides et prochains RDV */}

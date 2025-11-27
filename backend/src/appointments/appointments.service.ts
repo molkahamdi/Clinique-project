@@ -7,9 +7,12 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Injectable()
 export class AppointmentsService {
-  findAll() {
-    throw new Error('Method not implemented.');
-  }
+  async findAll(): Promise<Appointment[]> {
+  return await this.appointmentRepo.find({
+    relations: ['doctor', 'patient'],
+    order: { date: 'ASC', time: 'ASC' }
+  });
+}
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,

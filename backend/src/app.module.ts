@@ -13,6 +13,7 @@ import { EquipmentModule } from './equipment/equipment.module';
 import { MedicationsModule } from './medications/medications.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -30,6 +31,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
     EquipmentModule,
     MedicationsModule,
     AppointmentsModule,
+    
  
   ],
   controllers: [],

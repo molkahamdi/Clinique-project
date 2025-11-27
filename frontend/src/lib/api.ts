@@ -299,7 +299,11 @@ class ApiClient {
 
     return await response.json();
   }
+
+  
 }
+
+
 
 export const apiClient = new ApiClient(API_URL);
 export default apiClient;

@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (response.role === UserRole.DOCTOR) {
         router.push('/doctor-dashboard');
       } else {
-        router.push('/dashboard');
+        router.push('/receptionist-dashboard');
       }
     } catch (error) {
       console.error('❌ Erreur connexion:', error);

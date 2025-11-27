@@ -10,7 +10,7 @@ import { userRole } from 'src/users/entities/user.entity';
 @Controller('appointments')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AppointmentsController {
-  constructor(private readonly appointmentsService: AppointmentsService) {}
+  constructor(private readonly appointmentsService: AppointmentsService) { }
 
   @Post()
   @Roles(userRole.PATIENT, userRole.RECEP)
@@ -48,8 +48,10 @@ export class AppointmentsController {
     return this.appointmentsService.remove(id);
   }
   @Get()
-@Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
-findAll() {
-  return this.appointmentsService.findAll();
-}
+  @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
+  findAll() {
+    console.log("📌 HIT /appointments");
+    return this.appointmentsService.findAll();
+  }
+
 }

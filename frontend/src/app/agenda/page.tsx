@@ -1,18 +1,34 @@
+// app/agenda/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+import { apiClient } from "@/lib/api";
 import CalendarView from "./components/CalendarView";
 import AppointmentList from "./components/AppointmentList";
 import AppointmentForm from "./components/AppointmentForm";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { getAppointments, createAppointment, deleteAppointment, updateAppointment } from "./data/appointments";
-import { Input } from "@/components/ui/input";
+
+import { Sun, Moon } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Sun, Moon } from "lucide-react";
-import { Appointment } from "@/types/appointment";
+import { motion } from "framer-motion";
+
+import {
+  Appointment,
+  CreateAppointmentDto,
+  UpdateAppointmentDto,
+} from "@/types/appointment";
 
 export default function AgendaPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -23,123 +39,148 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const { theme, setTheme } = useTheme();
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
-
+  // ============================
+  // LOAD ALL APPOINTMENTS
+  // ============================
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const data = await getAppointments();
+      const data = await apiClient.getAppointments();
       setAppointments(data);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error("Impossible de charger les rendez-vous");
+    } catch (err: any) {
+      toast.error(err.message || "Impossible de charger les rendez-vous");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAdd = async (apptData: Omit<Appointment, 'id'> | Appointment) => {
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  // ============================
+  // CREATE OR UPDATE
+  // ============================
+  const handleSubmit = async (dto: CreateAppointmentDto | UpdateAppointmentDto) => {
     try {
       if (editAppt) {
-        // Modification
-        await updateAppointment(editAppt.id, apptData);
-        toast.success("Rendez-vous modifié avec succès");
+        // -------- UPDATE -------------
+        await apiClient.updateAppointment(editAppt.id, dto);
+        toast.success("Rendez-vous modifié");
       } else {
-        // Création
-        await createAppointment(apptData as Omit<Appointment, 'id'>);
-        toast.success("Rendez-vous créé avec succès");
+        // -------- CREATE -------------
+        await apiClient.createAppointment(dto as CreateAppointmentDto);
+        toast.success("Rendez-vous créé");
       }
+
       setOpen(false);
       setEditAppt(null);
       fetchAppointments();
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error("Erreur lors de l'enregistrement");
+    } catch (error: any) {
+      toast.error(error.message || "Erreur lors de l'enregistrement");
     }
   };
 
-  const handleEdit = (appt: Appointment) => {
-    setEditAppt(appt);
-    setOpen(true);
-  };
-
+  // ============================
+  // DELETE
+  // ============================
   const handleDelete = async () => {
     if (!toDeleteId) return;
+
     try {
-      await deleteAppointment(toDeleteId);
-      toast.success("Rendez-vous supprimé avec succès");
+      await apiClient.deleteAppointment(toDeleteId);
+      toast.success("Rendez-vous supprimé");
       setToDeleteId(null);
       fetchAppointments();
-    } catch (error) {
-      console.error('Erreur:', error);
+    } catch {
       toast.error("Erreur lors de la suppression");
     }
   };
 
-  const filteredAppointments = appointments.filter((appt) =>
-    appt.patient.toLowerCase().includes(search.toLowerCase()) ||
-    appt.email.toLowerCase().includes(search.toLowerCase()) ||
-    appt.phone.includes(search)
-  );
+  // ============================
+  // SEARCH FILTER
+  // ============================
+  const filtered = appointments.filter((appt) => {
+    const fullName =
+      `${appt.patient?.firstName || ""} ${appt.patient?.lastName || ""}`.toLowerCase();
+
+    return (
+      fullName.includes(search.toLowerCase()) ||
+      (appt.patient?.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (appt.patient?.phone || "").toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#f3f4f6] to-[#e5e7eb] dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a]">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] shadow-md">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#eef1f5] to-[#e2e8f0] dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a]">
+
+      {/* ================= HEADER ================= */}
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed top-0 left-0 right-0 z-50 border-b bg-white/40 dark:bg-[#0f172a]/60 backdrop-blur shadow-md"
+      >
         <div className="container mx-auto flex items-center justify-between py-4 px-6">
           <Link href="/home" className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center text-[#0f172a] font-bold">M</div>
-            <span className="text-xl font-bold text-white">Medi</span>
+            <div className="h-8 w-8 bg-[#0f172a] dark:bg-white rounded-full flex items-center justify-center text-white dark:text-[#0f172a] font-bold">
+              M
+            </div>
+            <span className="text-xl font-bold text-[#0f172a] dark:text-white">
+              Medi
+            </span>
           </Link>
-          <nav className="hidden md:flex space-x-8 font-medium text-white">
-            <Link href="/home" className="hover:text-cyan-300 transition">Home</Link>
-            <Link href="/about" className="hover:text-cyan-300 transition">About</Link>
-            <Link href="/departments" className="hover:text-cyan-300 transition">Pages</Link>
-            <Link href="/contact" className="hover:text-cyan-300 transition">Contact</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition"
-            >
-              {theme === "dark" ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-white" />}
-            </button>
-          </div>
-        </div>
-      </header>
 
-      {/* Hero Section */}
-      <section className="relative flex flex-1 items-center justify-center text-center text-white pt-24 pb-16">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a]/90 via-[#1e293b]/80 to-[#0f172a]/90" />
-        <div className="relative z-10 max-w-4xl px-6">
-          <p className="uppercase tracking-wider text-sm text-cyan-300 mb-2">
-            GESTION DES RENDEZ-VOUS
-          </p>
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
-            Planifiez la <span className="text-cyan-300">santé</span> <br />
-            de demain, aujourd'hui.
-          </h1>
-          <Dialog open={open} onOpenChange={(isOpen) => {
-            setOpen(isOpen);
-            if (!isOpen) {
-              setEditAppt(null);
-            }
-          }}>
+          <nav className="hidden md:flex space-x-8 font-medium text-[#0f172a] dark:text-white">
+            <Link href="/home" className="hover:text-cyan-400">Home</Link>
+            <Link href="/about" className="hover:text-cyan-400">About</Link>
+            <Link href="/departments" className="hover:text-cyan-400">Pages</Link>
+            <Link href="/contact" className="hover:text-cyan-400">Contact</Link>
+          </nav>
+
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-full bg-[#0f172a] dark:bg-white text-white dark:text-[#0f172a] shadow"
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
+          </button>
+        </div>
+      </motion.header>
+
+      {/* ================= HERO ================= */}
+      <section className="relative pt-28 pb-16 text-center text-white">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-gradient-to-br from-[#0f172a]/90 via-[#1e293b]/85 to-[#0f172a]/95"
+        />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-5xl md:text-6xl font-extrabold mb-6"
+          >
+            Planifiez vos consultations <br />
+            <span className="text-cyan-300">en toute simplicité</span>
+          </motion.h1>
+
+          {/* MODAL NEW APPOINTMENT */}
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditAppt(null); }}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white hover:bg-white hover:text-[#0f172a] font-bold px-8 py-6 rounded-xl shadow-lg text-lg">
+              <Button className="px-6 py-4 bg-cyan-600 hover:bg-cyan-700 text-white text-lg rounded-xl shadow-lg">
                 + Nouveau rendez-vous
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+
+            <DialogContent className="max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-xl">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                <DialogTitle className="text-2xl font-bold">
                   {editAppt ? "Modifier le rendez-vous" : "Nouveau rendez-vous"}
                 </DialogTitle>
               </DialogHeader>
-              <AppointmentForm 
-                onSubmit={handleAdd} 
+
+              <AppointmentForm
+                onSubmit={handleSubmit}
                 initialData={editAppt}
                 onCancel={() => {
                   setOpen(false);
@@ -151,65 +192,43 @@ export default function AgendaPage() {
         </div>
       </section>
 
-      {/* Recherche */}
-      <div className="max-w-2xl mx-auto px-6 mb-10 -mt-8 relative z-20">
-        <div className="relative">
-          <Input
-            placeholder="Rechercher un patient, email ou téléphone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-12 bg-white/95 dark:bg-gray-800/95 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500 focus:ring-cyan-300 rounded-xl py-6 text-lg shadow-lg"
-          />
-          <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
+      {/* ================= SEARCH BAR ================= */}
+      <div className="max-w-xl mx-auto -mt-8 relative z-20 px-6 mb-10">
+        <Input
+          placeholder="Rechercher un patient, email ou téléphone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-4 py-6 text-lg rounded-xl shadow-lg"
+        />
       </div>
 
-      {/* Contenu principal */}
-      <div className="flex-1 pb-16">
+      {/* ================= MAIN CONTENT ================= */}
+      <div className="flex-1 mt-12 pb-20">
         {loading ? (
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg animate-pulse">
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-                <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
-              </div>
-              <div className="space-y-4">
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg animate-pulse">
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <p className="text-center mt-20">Chargement...</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-8 max-w-7xl mx-auto px-6">
-            <CalendarView appointments={filteredAppointments} />
+            <CalendarView appointments={filtered} />
+
             <AppointmentList
-              appointments={filteredAppointments}
-              onEdit={handleEdit}
+              appointments={filtered}
               onDelete={(id) => setToDeleteId(id)}
+              onEdit={(appt) => {
+                setEditAppt(appt);
+                setOpen(true);
+              }}
             />
           </div>
         )}
       </div>
 
-      {/* Dialogue de suppression */}
-      <Dialog open={toDeleteId !== null} onOpenChange={(isOpen) => !isOpen && setToDeleteId(null)}>
-        <DialogContent className="bg-white dark:bg-gray-800">
+      {/* ================= DELETE CONFIRM ================= */}
+      <Dialog open={!!toDeleteId} onOpenChange={() => setToDeleteId(null)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-              Confirmer la suppression
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Cette action est irréversible. Voulez-vous vraiment supprimer ce rendez-vous ?
-            </DialogDescription>
+            <DialogTitle>Supprimer ce rendez-vous ?</DialogTitle>
           </DialogHeader>
-          <DialogFooter className="flex gap-3 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setToDeleteId(null)}>
               Annuler
             </Button>
