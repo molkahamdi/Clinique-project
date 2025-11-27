@@ -47,33 +47,52 @@ export default function AppointmentDetailsPage() {
   const handleCancelAppointment = async () => {
     if (!appointment) return;
     
-    // Vérifications côté client
+    // Vérifications côté client améliorée
     const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
     const now = new Date();
     const timeDiff = appointmentDateTime.getTime() - now.getTime();
     const hoursDiff = timeDiff / (1000 * 60 * 60);
 
+    // Message d'erreur plus précis
     if (hoursDiff < 24) {
-      setError('L\'annulation doit être effectuée au moins 24 heures avant le rendez-vous. Veuillez contacter directement la clinique.');
+      const hoursRemaining = Math.floor(hoursDiff);
+      const minutesRemaining = Math.floor((hoursDiff - hoursRemaining) * 60);
+      
+      let timeMessage = '';
+      if (hoursRemaining > 0) {
+        timeMessage = `Il reste ${hoursRemaining} heure(s) et ${minutesRemaining} minute(s) avant le rendez-vous.`;
+      } else {
+        timeMessage = `Il reste moins d'une heure avant le rendez-vous.`;
+      }
+      
+      setError(`L'annulation doit être effectuée au moins 24 heures avant le rendez-vous. 
+                ${timeMessage} 
+                Veuillez contacter directement la clinique au 01 23 45 67 89.`);
       return;
     }
 
-    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est définitive et persistante.')) return;
+    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est irréversible.')) return;
     
     try {
       setCancelling(true);
       setError(null);
       
+      console.log('🔄 Début de l\'annulation du rendez-vous...');
+      
       // Appel API pour annuler en base de données
       const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
       setAppointment(updatedAppointment);
       
-      console.log('✅ Rendez-vous annulé avec persistance en base de données');
-      alert('Rendez-vous annulé avec succès ! Le statut est maintenant permanent.');
+      console.log('✅ Rendez-vous annulé avec succès');
+      
+      // Message de succès
+      alert('Rendez-vous annulé avec succès !');
       
     } catch (error: any) {
-      console.error('Error cancelling appointment:', error);
-      setError(error.message || 'Erreur lors de l\'annulation du rendez-vous');
+      console.error('❌ Erreur lors de l\'annulation:', error);
+      
+      // Afficher le message d'erreur spécifique du backend
+      setError(error.message || 'Erreur lors de l\'annulation du rendez-vous. Veuillez réessayer.');
       
       // Recharger les données actuelles
       await loadAppointment();
@@ -152,7 +171,7 @@ export default function AppointmentDetailsPage() {
                        appointment?.status === AppointmentStatus.CONFIRMED;
 
   const getCancellationInfo = () => {
-    if (!appointment) return { canCancelNow: false, message: '' };
+    if (!appointment) return { canCancelNow: false, message: '', hoursRemaining: 0 };
     
     const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
     const now = new Date();
@@ -160,13 +179,28 @@ export default function AppointmentDetailsPage() {
     const hoursDiff = timeDiff / (1000 * 60 * 60);
 
     if (hoursDiff < 24) {
+      const hoursRemaining = Math.floor(hoursDiff);
+      const minutesRemaining = Math.floor((hoursDiff - hoursRemaining) * 60);
+      
+      let timeMessage = '';
+      if (hoursRemaining > 0) {
+        timeMessage = `Il reste ${hoursRemaining} heure(s) et ${minutesRemaining} minute(s) avant le rendez-vous.`;
+      } else {
+        timeMessage = `Il reste moins d'une heure avant le rendez-vous.`;
+      }
+      
       return { 
         canCancelNow: false, 
-        message: 'L\'annulation en ligne n\'est plus possible (moins de 24h). Contactez la clinique.' 
+        message: `L'annulation en ligne n'est plus possible. ${timeMessage} Contactez la clinique au 01 23 45 67 89.`,
+        hoursRemaining: hoursDiff
       };
     }
     
-    return { canCancelNow: true, message: '' };
+    return { 
+      canCancelNow: true, 
+      message: `Vous pouvez annuler jusqu'à ${Math.floor(hoursDiff - 24)} heure(s) avant le rendez-vous.`,
+      hoursRemaining: hoursDiff
+    };
   };
 
   const cancellationInfo = getCancellationInfo();
@@ -218,7 +252,9 @@ export default function AppointmentDetailsPage() {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="whitespace-pre-line">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -336,7 +372,7 @@ export default function AppointmentDetailsPage() {
                   {canCancel && !cancellationInfo.canCancelNow && (
                     <Alert className="mt-4">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
+                      <AlertDescription className="whitespace-pre-line">
                         {cancellationInfo.message}
                       </AlertDescription>
                     </Alert>

@@ -8,12 +8,14 @@ export enum UserRole {
 }
 
 export interface User {
+  dateOfBirth: string | number | Date;
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string; // Changé de number à string
   role: UserRole;
+  speciality?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +43,8 @@ export interface AuthResponse {
   email: string;
   phone: string; // Changé de number à string
   role: UserRole;
+  dateOfBirth?: string;
+  speciality?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +55,8 @@ export interface LoggedUser {
   id: string;
   email: string;
   role: UserRole;
+  speciality?: string;
+  dateOfBirth?: string;
   firstName: string;
   lastName: string;
   phone: string;

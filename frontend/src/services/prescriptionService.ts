@@ -19,6 +19,7 @@ export const prescriptionService = {
   },
 
   async createPrescription(data: CreatePrescriptionDto): Promise<Prescription> {
+    console.log('📝 Création d\'ordonnance avec données:', data);
     return await apiClient.apiCall('/prescriptions', {
       method: 'POST',
       body: JSON.stringify(data),

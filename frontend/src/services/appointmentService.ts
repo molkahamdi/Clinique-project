@@ -139,23 +139,20 @@ export const appointmentService = {
   async cancelAppointment(id: string): Promise<Appointment> {
     try {
       console.log('❌ Annulation du rendez-vous via API:', id);
+      
+      // Utiliser UNIQUEMENT apiClient pour une cohérence totale
       const response = await apiClient.apiCall(`/appointments/${id}/cancel`, {
         method: 'PATCH',
       });
+
       console.log('✅ Rendez-vous annulé avec succès:', response);
       return response;
+      
     } catch (error: any) {
       console.error('❌ Erreur API annulation:', error);
       
-      // Si l'erreur contient un message, le propager
-      if (error.message) {
-        throw new Error(error.message);
-      }
-      
-      console.log('⚠️ API annulation non disponible, simulation réussie');
-      const appointments = this.getAllDemoAppointments();
-      const appointment = appointments.find(apt => apt.id === id) || appointments[0];
-      return { ...appointment, status: AppointmentStatus.CANCELLED };
+      // L'erreur est déjà gérée par apiClient, on la propage simplement
+      throw error;
     }
   },
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, User, Calendar } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface PrescriptionFormProps {
   onSuccess: () => void;
@@ -15,15 +16,20 @@ interface PrescriptionFormProps {
 }
 
 export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientsLoading, setPatientsLoading] = useState(true);
   
+  // Récupérer les vraies informations du docteur connecté
+  const doctorName = `Dr. ${user?.firstName} ${user?.lastName}`;
+  const doctorSpecialty = user?.speciality || 'Médecin Généraliste';
+
   const [formData, setFormData] = useState<CreatePrescriptionDto>({
     date: new Date().toISOString().split('T')[0],
     patientId: initialData?.patientId || '',
-    doctorName: initialData?.doctorName || '',
-    doctorSpecialty: initialData?.doctorSpecialty || '',
+    doctorName: doctorName,
+    doctorSpecialty: doctorSpecialty,
     notes: initialData?.notes || '',
     items: initialData?.items || [
       {
@@ -31,7 +37,8 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
         dosage: '',
         frequency: '',
         duration: '',
-        instructions: ''
+        instructions: '',
+        urgent: false
       }
     ]
   });
@@ -54,12 +61,11 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.patientId || !formData.doctorName || formData.items.length === 0) {
+    if (!formData.patientId || formData.items.length === 0) {
       alert('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    // Valider que tous les médicaments ont les champs requis
     const invalidItems = formData.items.filter(item => 
       !item.medicationName || !item.dosage || !item.frequency || !item.duration
     );
@@ -72,7 +78,14 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
     setLoading(true);
 
     try {
-      await prescriptionService.createPrescription(formData);
+      // S'assurer que les informations du docteur sont à jour
+      const prescriptionData = {
+        ...formData,
+        doctorName: doctorName,
+        doctorSpecialty: doctorSpecialty
+      };
+
+      await prescriptionService.createPrescription(prescriptionData);
       alert('Ordonnance créée avec succès !');
       onSuccess();
     } catch (error) {
@@ -93,7 +106,8 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
           dosage: '',
           frequency: '',
           duration: '',
-          instructions: ''
+          instructions: '',
+          urgent: false
         }
       ]
     }));
@@ -111,7 +125,7 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
     }));
   };
 
-  const updateMedication = (index: number, field: keyof PrescriptionItem, value: string) => {
+  const updateMedication = (index: number, field: keyof PrescriptionItem, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.map((item, i) => 
@@ -139,10 +153,32 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Sélection du patient */}
+            {/* Informations du médecin (lecture seule) */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium flex items-center">
                 <User className="w-5 h-5 mr-2 text-blue-600" />
+                Informations Médecin
+              </h3>
+              
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-900 mb-2">Médecin prescripteur :</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">Nom :</span>
+                    <p>{doctorName}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Spécialité :</span>
+                    <p>{doctorSpecialty}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sélection du patient */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center">
+                <User className="w-5 h-5 mr-2 text-green-600" />
                 Informations Patient
               </h3>
               
@@ -179,10 +215,9 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
                 )}
               </div>
 
-              {/* Informations du patient sélectionné */}
               {formData.patientId && getSelectedPatient() && (
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-900 mb-2">Patient sélectionné :</h4>
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-900 mb-2">Patient sélectionné :</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="font-medium">Nom :</span>
@@ -209,10 +244,9 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
               )}
             </div>
 
-            {/* Informations de l'ordonnance */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-green-600" />
+                <Calendar className="w-5 h-5 mr-2 text-purple-600" />
                 Informations de l'Ordonnance
               </h3>
 
@@ -226,29 +260,6 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
                     value={formData.date}
                     onChange={(e) => updateField('date', e.target.value)}
                     required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nom du médecin *
-                  </label>
-                  <Input
-                    value={formData.doctorName}
-                    onChange={(e) => updateField('doctorName', e.target.value)}
-                    placeholder="Dr. Nom Prénom"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Spécialité du médecin
-                  </label>
-                  <Input
-                    value={formData.doctorSpecialty}
-                    onChange={(e) => updateField('doctorSpecialty', e.target.value)}
-                    placeholder="Médecin généraliste"
                   />
                 </div>
               </div>
@@ -267,7 +278,6 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
               </div>
             </div>
 
-            {/* Médicaments */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Médicaments prescrits</h3>
@@ -342,6 +352,18 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
                         />
                       </div>
 
+                      <div>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(item.urgent)}
+                            onChange={(e) => updateMedication(index, 'urgent', e.target.checked)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Médicament urgent</span>
+                        </label>
+                      </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700">
                           Instructions spéciales
@@ -360,7 +382,6 @@ export function PrescriptionForm({ onSuccess, initialData }: PrescriptionFormPro
               ))}
             </div>
 
-            {/* Boutons d'action */}
             <div className="flex space-x-4 pt-6">
               <Button type="button" variant="outline" onClick={onSuccess}>
                 Annuler

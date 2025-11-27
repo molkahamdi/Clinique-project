@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, User, Plus, CalendarDays, FileText, Pill, Stethoscope, TrendingUp, LogOut } from 'lucide-react';
+import { Calendar, Clock, User, Plus, CalendarDays, FileText, Pill, Stethoscope, TrendingUp, LogOut, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PatientDashboard() {
@@ -20,6 +20,7 @@ export default function PatientDashboard() {
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -30,10 +31,12 @@ export default function PatientDashboard() {
 
   const loadAppointments = async () => {
     try {
+      setError(null);
       const data = await appointmentService.getPatientAppointments(user!.id);
       setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
+      setError('Erreur lors du chargement des rendez-vous');
     } finally {
       setAppointmentsLoading(false);
     }
@@ -41,33 +44,62 @@ export default function PatientDashboard() {
 
   const loadPrescriptions = async () => {
     try {
+      setError(null);
       const data = await prescriptionService.getPatientPrescriptions(user!.id);
       setPrescriptions(data);
     } catch (error) {
       console.error('Error loading prescriptions:', error);
+      setError('Erreur lors du chargement des ordonnances');
     } finally {
       setPrescriptionsLoading(false);
     }
   };
 
   const handleCancelAppointment = async (appointmentId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
-    
     try {
+      setError(null);
+      
+      // Trouver le rendez-vous à annuler
+      const appointment = appointments.find(a => a.id === appointmentId);
+      if (!appointment) return;
+
+      // Vérification côté client pour éviter les appels API inutiles
+      const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+      const now = new Date();
+      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+      if (hoursDiff < 24) {
+        const hoursRemaining = Math.floor(hoursDiff);
+        const minutesRemaining = Math.floor((hoursDiff - hoursRemaining) * 60);
+        
+        let timeMessage = '';
+        if (hoursRemaining > 0) {
+          timeMessage = `Il reste ${hoursRemaining} heure(s) et ${minutesRemaining} minute(s) avant le rendez-vous.`;
+        } else {
+          timeMessage = `Il reste moins d'une heure avant le rendez-vous.`;
+        }
+        
+        setError(`L'annulation doit être effectuée au moins 24 heures avant le rendez-vous. 
+                  ${timeMessage} 
+                  Veuillez contacter directement la clinique au 01 23 45 67 89.`);
+        return;
+      }
+
+      if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est irréversible.')) return;
+      
       setCancellingId(appointmentId);
       
-      // Mettre à jour l'état local immédiatement pour un feedback visuel rapide
+      // Mise à jour optimiste
       setAppointments(prev => prev.map(apt => 
         apt.id === appointmentId 
           ? { ...apt, status: AppointmentStatus.CANCELLED }
           : apt
       ));
 
-      // Appel API pour annuler le rendez-vous
       const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
-      console.log('✅ Rendez-vous annulé avec succès:', updatedAppointment);
       
-      // Mettre à jour avec les données fraîches de l'API
+      // Mise à jour avec les données réelles
       setAppointments(prev => prev.map(apt => 
         apt.id === appointmentId 
           ? updatedAppointment
@@ -75,12 +107,14 @@ export default function PatientDashboard() {
       ));
       
       alert('Rendez-vous annulé avec succès !');
-    } catch (error) {
-      // En cas d'erreur, annuler le changement local et recharger
-      await loadAppointments();
-      
+    } catch (error: any) {
       console.error('Error cancelling appointment:', error);
-      alert('Erreur lors de l\'annulation du rendez-vous');
+      
+      // Afficher le message d'erreur spécifique du backend
+      setError(error.message || 'Erreur lors de l\'annulation du rendez-vous');
+      
+      // Recharger les données pour éviter les incohérences
+      await loadAppointments();
     } finally {
       setCancellingId(null);
     }
@@ -90,7 +124,6 @@ export default function PatientDashboard() {
     if (logout) {
       logout();
     } else {
-      // Solution de secours si logout n'est pas disponible dans le contexte
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       localStorage.removeItem('token');
@@ -99,7 +132,7 @@ export default function PatientDashboard() {
   };
 
   const getStatusBadge = (status: AppointmentStatus) => {
-    const baseClasses = "border font-medium";
+    const baseClasses = "border font-medium text-xs";
     
     switch (status) {
       case AppointmentStatus.PENDING:
@@ -127,31 +160,46 @@ export default function PatientDashboard() {
           </Badge>
         );
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary" className={baseClasses}>{status}</Badge>;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Date invalide';
+    }
   };
 
   const formatShortDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR');
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR');
+    } catch (error) {
+      return 'Date invalide';
+    }
   };
 
   const getMedicationsCount = (prescription: Prescription) => {
     return prescription.items?.length || 0;
   };
 
+  const getUrgentMedicationsCount = (prescription: Prescription) => {
+    return prescription.items?.filter(item => item.urgent === true).length || 0;
+  };
+
   const upcomingAppointments = appointments.filter(a => 
     a.status === AppointmentStatus.PENDING || 
     a.status === AppointmentStatus.CONFIRMED
   );
+
+  const totalMedications = prescriptions.reduce((total, pres) => total + getMedicationsCount(pres), 0);
+  const totalUrgentMedications = prescriptions.reduce((total, pres) => total + getUrgentMedicationsCount(pres), 0);
 
   if (appointmentsLoading && prescriptionsLoading) {
     return (
@@ -178,7 +226,6 @@ export default function PatientDashboard() {
                 <p className="text-slate-600 font-medium">Votre espace santé personnel</p>
               </div>
               
-              {/* Bouton logout - visible sur mobile */}
               <Button 
                 variant="outline" 
                 size="sm"
@@ -197,7 +244,6 @@ export default function PatientDashboard() {
                 </Link>
               </Button>
               
-              {/* Bouton logout - visible sur desktop */}
               <Button 
                 variant="outline" 
                 size="sm"
@@ -213,6 +259,14 @@ export default function PatientDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Message d'erreur */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+            <p className="text-red-700 text-sm whitespace-pre-line">{error}</p>
+          </div>
+        )}
+
         {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-white to-blue-50/50 border-blue-100 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300">
@@ -224,7 +278,12 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{appointments.length}</div>
-              <p className="text-xs text-slate-500 mt-1">Dont {upcomingAppointments.length} à venir</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {upcomingAppointments.length > 0 
+                  ? `${upcomingAppointments.length} à venir` 
+                  : 'Aucun RDV à venir'
+                }
+              </p>
             </CardContent>
           </Card>
           
@@ -237,7 +296,9 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{prescriptions.length}</div>
-              <p className="text-xs text-slate-500 mt-1">Prescriptions actives</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {prescriptions.length > 0 ? 'Prescriptions actives' : 'Aucune ordonnance'}
+              </p>
             </CardContent>
           </Card>
           
@@ -249,10 +310,13 @@ export default function PatientDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-800">
-                {prescriptions.reduce((total, pres) => total + getMedicationsCount(pres), 0)}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">Traitements en cours</p>
+              <div className="text-2xl font-bold text-slate-800">{totalMedications}</div>
+              <p className="text-xs text-slate-500 mt-1">
+                {totalUrgentMedications > 0 
+                  ? `${totalUrgentMedications} urgent(s)` 
+                  : 'Traitements en cours'
+                }
+              </p>
             </CardContent>
           </Card>
           
@@ -265,7 +329,9 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{upcomingAppointments.length}</div>
-              <p className="text-xs text-slate-500 mt-1">À planifier</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {upcomingAppointments.length > 0 ? 'À planifier' : 'Aucun RDV programmé'}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -344,11 +410,11 @@ export default function PatientDashboard() {
                               <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                                 <div className="flex items-center font-medium">
                                   <Clock className="h-4 w-4 mr-1.5 text-slate-400" />
-                                  {appointment.time}
+                                  {appointment.time || 'Heure non définie'}
                                 </div>
                                 <div className="flex items-center font-medium">
                                   <User className="h-4 w-4 mr-1.5 text-slate-400" />
-                                  Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                                  Dr. {appointment.doctor?.firstName || 'Prénom'} {appointment.doctor?.lastName || 'Nom'}
                                 </div>
                                 {appointment.reason && (
                                   <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-medium">
@@ -431,17 +497,24 @@ export default function PatientDashboard() {
                                 <p className="text-lg font-semibold text-slate-800">
                                   Ordonnance du {formatShortDate(prescription.date)}
                                 </p>
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                  {getMedicationsCount(prescription)} médicament(s)
-                                </Badge>
+                                <div className="flex gap-2">
+                                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                    {getMedicationsCount(prescription)} médicament(s)
+                                  </Badge>
+                                  {getUrgentMedicationsCount(prescription) > 0 && (
+                                    <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
+                                      {getUrgentMedicationsCount(prescription)} urgent(s)
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               
                               <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-3">
                                 <div className="flex items-center font-medium">
-                                  <User className="h-4 w-4 mr-1.5 text-slate-400" />
-                                  Dr. {prescription.doctorName}
+                                  <Stethoscope className="h-4 w-4 mr-1.5 text-slate-400" />
+                                  <span className="font-semibold">{prescription.doctorName || 'Dr. Non spécifié'}</span>
                                   {prescription.doctorSpecialty && (
-                                    <span className="ml-1 text-slate-500">- {prescription.doctorSpecialty}</span>
+                                    <span className="ml-2 text-slate-500">- {prescription.doctorSpecialty}</span>
                                   )}
                                 </div>
                               </div>
@@ -463,10 +536,17 @@ export default function PatientDashboard() {
                                   {prescription.items?.slice(0, 3).map((item, index) => (
                                     <span
                                       key={index}
-                                      className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200/60"
+                                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${
+                                        item.urgent === true 
+                                          ? 'bg-red-100 text-red-800 border-red-200' 
+                                          : 'bg-blue-100 text-blue-800 border-blue-200/60'
+                                      }`}
                                     >
                                       <Pill className="w-3 h-3 mr-1.5" />
                                       {item.medicationName}
+                                      {item.urgent === true && (
+                                        <span className="ml-1 font-bold">!</span>
+                                      )}
                                     </span>
                                   ))}
                                   {prescription.items?.length > 3 && (

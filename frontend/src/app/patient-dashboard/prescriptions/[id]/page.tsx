@@ -7,7 +7,7 @@ import { Prescription } from '@/types/prescription';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, User, Calendar, ArrowLeft, Pill, Printer, Link } from 'lucide-react';
+import { FileText, User, Calendar, ArrowLeft, Pill, Printer, Stethoscope } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function PrescriptionDetailsPage() {
@@ -115,22 +115,23 @@ export default function PrescriptionDetailsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <User className="w-5 h-5 text-gray-400" />
-                    <span className="font-medium">Médecin:</span>
+                    <span className="font-medium">Médecin prescripteur:</span>
                   </div>
-                  <span>
-                    Dr. {prescription.doctorName}
+                  <div className="text-right">
+                    <span className="font-semibold">Dr. {prescription.doctorName}</span>
                     {prescription.doctorSpecialty && (
-                      <span className="text-gray-600"> - {prescription.doctorSpecialty}</span>
+                      <p className="text-gray-600 text-sm">{prescription.doctorSpecialty}</p>
                     )}
-                  </span>
+                  </div>
                 </div>
 
                 {prescription.notes && (
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
-                      <span className="font-medium">Notes du médecin:</span>
+                      <Stethoscope className="w-5 h-5 text-gray-400" />
+                      <span className="font-medium">Notes et conseils médicaux:</span>
                     </div>
-                    <p className="text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    <p className="text-gray-600 bg-gray-50 p-3 rounded-lg border">
                       {prescription.notes}
                     </p>
                   </div>
@@ -149,30 +150,35 @@ export default function PrescriptionDetailsPage() {
               <CardContent>
                 <div className="space-y-4">
                   {prescription.items?.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-start mb-2">
+                    <div key={index} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
                         <h4 className="font-semibold text-lg text-gray-900">
                           {item.medicationName}
                         </h4>
-                        <Badge variant="outline">Médicament {index + 1}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            Médicament {index + 1}
+                          </Badge>
+                         
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                        <div>
-                          <span className="font-medium">Dosage:</span>
-                          <p>{item.dosage}</p>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="font-medium block mb-1">Dosage</span>
+                          <p className="font-semibold text-gray-900">{item.dosage}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Fréquence:</span>
-                          <p>{item.frequency}</p>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="font-medium block mb-1">Fréquence</span>
+                          <p className="font-semibold text-gray-900">{item.frequency}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Durée:</span>
-                          <p>{item.duration}</p>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="font-medium block mb-1">Durée</span>
+                          <p className="font-semibold text-gray-900">{item.duration}</p>
                         </div>
                       </div>
                       {item.instructions && (
-                        <div className="mt-3">
-                          <span className="font-medium text-sm">Instructions spéciales:</span>
+                        <div className="mt-3 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+                          <span className="font-medium text-sm text-gray-700">Instructions spéciales:</span>
                           <p className="text-sm text-gray-600 mt-1">{item.instructions}</p>
                         </div>
                       )}
@@ -188,23 +194,34 @@ export default function PrescriptionDetailsPage() {
             {/* Informations patient */}
             <Card>
               <CardHeader>
-                <CardTitle>Informations patient</CardTitle>
+                <CardTitle className="flex items-center">
+                  <User className="w-5 h-5 mr-2 text-blue-600" />
+                  Informations patient
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium">Nom complet</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm font-medium text-gray-500">Nom complet</p>
+                  <p className="text-sm font-semibold text-gray-900">
                     {user?.firstName} {user?.lastName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Email</p>
-                  <p className="text-sm text-gray-600">{user?.email}</p>
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <p className="text-sm text-gray-900">{user?.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Téléphone</p>
-                  <p className="text-sm text-gray-600">{user?.phone || 'Non renseigné'}</p>
+                  <p className="text-sm font-medium text-gray-500">Téléphone</p>
+                  <p className="text-sm text-gray-900">{user?.phone || 'Non renseigné'}</p>
                 </div>
+                {user?.dateOfBirth && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Date de naissance</p>
+                    <p className="text-sm text-gray-900">
+                      {new Date(user.dateOfBirth).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -212,6 +229,9 @@ export default function PrescriptionDetailsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
+                <CardDescription>
+                  Gérer cette ordonnance
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -219,17 +239,72 @@ export default function PrescriptionDetailsPage() {
                     <Printer className="w-4 h-4 mr-2" />
                     Imprimer l'ordonnance
                   </Button>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href="/patient-dashboard">
-                      Retour au tableau de bord
-                    </Link>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => router.push('/patient-dashboard')}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Retour au tableau de bord
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Informations importantes */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="text-blue-900 text-sm">
+                  Informations importantes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-xs text-blue-800 space-y-2">
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Présentez cette ordonnance à votre pharmacien</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Valable 3 mois à partir de la date d'émission</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Conservez ce document pendant 1 an minimum</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Respectez les doses et durées prescrites</span>
+                  </li>
+                </ul>
               </CardContent>
             </Card>
           </div>
         </div>
       </main>
+
+      {/* Style pour l'impression */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .min-h-screen,
+          .min-h-screen * {
+            visibility: visible;
+          }
+          .min-h-screen {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
