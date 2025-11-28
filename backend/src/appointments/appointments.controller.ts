@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseUUIDPipe
+} from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
@@ -12,7 +22,6 @@ import { userRole } from 'src/users/entities/user.entity';
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
-
   @Post()
   @Roles(userRole.PATIENT, userRole.RECEP)
   create(@Body() createAppointmentDto: CreateAppointmentDto) {
@@ -25,6 +34,19 @@ export class AppointmentsController {
     return this.appointmentsService.findByPatientId(patientId);
   }
 
+  // ✅ CORRECT SINGLE ROUTE FOR DOCTOR
+  @Get('doctor/:doctorId')
+  @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
+  getDoctorAppointments(@Param('doctorId') doctorId: string) {
+    return this.appointmentsService.findByDoctorId(doctorId);
+  }
+
+  @Get()
+  @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
+  findAll() {
+    return this.appointmentsService.findAll();
+  }
+
   @Get(':id')
   @Roles(userRole.PATIENT, userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -33,7 +55,10 @@ export class AppointmentsController {
 
   @Patch(':id')
   @Roles(userRole.PATIENT, userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateAppointmentDto: UpdateAppointmentDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateAppointmentDto: UpdateAppointmentDto
+  ) {
     return this.appointmentsService.update(id, updateAppointmentDto);
   }
 
@@ -48,11 +73,4 @@ export class AppointmentsController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.appointmentsService.remove(id);
   }
-
-  @Get()
-  @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
-  findAll() {
-    return this.appointmentsService.findAll();
-  }
-
 }

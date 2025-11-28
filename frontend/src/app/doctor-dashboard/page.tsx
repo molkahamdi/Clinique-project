@@ -3,12 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { appointmentService } from '@/services/appointmentService';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, User, CalendarDays, FileText, Users, Stethoscope, RefreshCw, Bell } from 'lucide-react';
 import Link from 'next/link';
 import RoleGuard from '@/components/guards/RoleGuard';
 import { UserRole } from '@/types/auth';
@@ -18,118 +12,47 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Bell, RefreshCw, FileText, Calendar } from 'lucide-react';
+import { appointmentService } from '@/services/appointmentService';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 
 function DoctorDashboardContent() {
   const { user } = useAuth();
+  const [doctorPending, setDoctorPending] = useState<Appointment[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
-  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
-  const [stats, setStats] = useState({
-    today: 0,
-    week: 0,
-    pending: 0,
-    total: 0
-  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [usingDemoData, setUsingDemoData] = useState(false);
-  const [doctorPending, setDoctorPending] = useState<Appointment[]>([]);
-
 
   useEffect(() => {
     loadDashboardData();
   }, [user?.id]);
 
   const loadDashboardData = async () => {
-  try {
-    setLoading(true);
-    console.log('🚀 Démarrage du chargement du dashboard docteur...');
-    
-    if (!user?.id) {
-      console.log('❌ Aucun utilisateur connecté');
-      return;
+    try {
+      setLoading(true);
+
+      if (!user?.id) return;
+
+      // Load all appointments for this doctor
+      const doctorAppointments = await appointmentService.getDoctorAppointments(user.id);
+      setAppointments(doctorAppointments);
+
+      // Pending notifications
+      const pendingForDoctor = doctorAppointments.filter(
+        (apt) => apt.status === AppointmentStatus.PENDING
+      );
+      setDoctorPending(pendingForDoctor);
+      
+    } catch (err) {
+      console.error("Error loading doctor dashboard:", err);
+      setAppointments([]);
+      setDoctorPending([]);
+    } finally {
+      setLoading(false);
     }
-
-    // Charger les rendez-vous du docteur connecté
-    const doctorAppointments = await appointmentService.getDoctorAppointments(user.id);
-    console.log('📊 Rendez-vous du docteur chargés:', doctorAppointments.length);
-    
-    setAppointments(doctorAppointments);
-
-    // 🔔 EXTRA: RDV en attente pour ce docteur
-    const pendingForDoctor = doctorAppointments.filter(
-      (apt) => apt.status === AppointmentStatus.PENDING
-    );
-    setDoctorPending(pendingForDoctor);
-
-    // Vérifier si on utilise des données de démonstration
-    if (doctorAppointments.length > 0 && doctorAppointments[0].id?.includes('appt-')) {
-      setUsingDemoData(true);
-      console.log('ℹ️ Utilisation des données de démonstration');
-    }
-
-    // Filtrer et organiser les données
-    filterAndOrganizeAppointments(doctorAppointments);
-    calculateStats(doctorAppointments);
-
-  } catch (error) {
-    console.error('💥 Erreur critique:', error);
-
-    // En cas d'erreur, utiliser des données de secours
-    const fallbackData = appointmentService.getDemoDoctorAppointments(user?.id || 'doctor-1');
-    setAppointments(fallbackData);
-
-    // 🔔 Extra fallback notification logic
-    const pendingFallback = fallbackData.filter(
-      (apt) => apt.status === AppointmentStatus.PENDING
-    );
-    setDoctorPending(pendingFallback);
-
-    filterAndOrganizeAppointments(fallbackData);
-    calculateStats(fallbackData);
-    setUsingDemoData(true);
-
-  } finally {
-    setLoading(false);
-    console.log('🏁 Chargement du dashboard terminé');
-  }
-};
-
-
-  const filterAndOrganizeAppointments = (appointmentsList: Appointment[]) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Rendez-vous du jour
-    const todayApps = appointmentsList.filter(apt => apt.date === today);
-    setTodayAppointments(todayApps);
-
-    // Rendez-vous à venir (7 prochains jours)
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const upcoming = appointmentsList.filter(apt => 
-      apt.date > today && apt.date <= nextWeek &&
-      (apt.status === AppointmentStatus.PENDING || apt.status === AppointmentStatus.CONFIRMED)
-    );
-    setUpcomingAppointments(upcoming);
-  };
-
-  const calculateStats = (appointmentsList: Appointment[]) => {
-    const today = new Date().toISOString().split('T')[0];
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    const todayCount = appointmentsList.filter(apt => apt.date === today).length;
-    const weekCount = appointmentsList.filter(apt => 
-      apt.date >= today && apt.date <= nextWeek
-    ).length;
-    const pendingCount = appointmentsList.filter(apt => 
-      apt.status === AppointmentStatus.PENDING
-    ).length;
-
-    setStats({
-      today: todayCount,
-      week: weekCount,
-      pending: pendingCount,
-      total: appointmentsList.length
-    });
   };
 
   const handleRefresh = async () => {
@@ -138,387 +61,162 @@ function DoctorDashboardContent() {
     setRefreshing(false);
   };
 
-  const handleStatusUpdate = async (appointmentId: string, newStatus: AppointmentStatus) => {
-    try {
-      await appointmentService.updateAppointmentStatus(appointmentId, newStatus);
-      // Recharger les données
-      await loadDashboardData();
-    } catch (error) {
-      console.error('Erreur mise à jour statut:', error);
-      alert('Erreur lors de la mise à jour du statut');
-    }
-  };
+  const getStatusBadge = (status: AppointmentStatus | string) => {
+  const config = {
+    PENDING: { label: "En attente", variant: "secondary" },
+    CONFIRMED: { label: "Confirmé", variant: "default" },
+    CANCELLED: { label: "Annulé", variant: "destructive" },
+    COMPLETED: { label: "Terminé", variant: "outline" },
+  } as const; //  <-- IMPORTANT FIX
 
-  const getStatusBadge = (status: AppointmentStatus) => {
-    const statusConfig = {
-      [AppointmentStatus.PENDING]: { label: 'En attente', variant: 'secondary' as const },
-      [AppointmentStatus.CONFIRMED]: { label: 'Confirmé', variant: 'default' as const },
-      [AppointmentStatus.CANCELLED]: { label: 'Annulé', variant: 'destructive' as const },
-      [AppointmentStatus.COMPLETED]: { label: 'Terminé', variant: 'outline' as const },
-    };
-    
-    const config = statusConfig[status];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
+  const key = status.toUpperCase() as keyof typeof config;
+  const st = config[key];
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  return <Badge variant={st.variant}>{st.label}</Badge>;
+};
 
-  const getUniquePatientsCount = () => {
-    const patientIds = new Set(appointments.map(apt => apt.patientId));
-    return patientIds.size;
-  };
+
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement du tableau de bord...</p>
-        </div>
+        <p className="text-gray-600">Chargement...</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* HEADER */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
+            
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 Bonjour, Dr. {user?.firstName} {user?.lastName}
               </h1>
-              <p className="text-gray-600">Tableau de bord médical</p>
-              {usingDemoData && (
-                <Badge variant="outline" className="mt-2 bg-yellow-100 text-yellow-800">
-                  Mode Démonstration
-                </Badge>
-              )}
+              <p className="text-gray-600">Tableau de bord</p>
             </div>
+
+            {/* RIGHT SIDE */}
             <div className="flex items-center space-x-3">
 
-  {/* 🔔 Notification Bell */}
-  <DropdownMenu>
-    <DropdownMenuTrigger>
-      <div className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100">
-        <Bell className="w-6 h-6 text-gray-700" />
-        {doctorPending.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-            {doctorPending.length}
-          </span>
-        )}
-      </div>
-    </DropdownMenuTrigger>
+              {/* Notification */}
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <div className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100">
+                    <Bell className="w-6 h-6 text-gray-700" />
+                    {doctorPending.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {doctorPending.length}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuTrigger>
 
-    <DropdownMenuContent className="w-80">
-      <p className="p-2 font-medium border-b">Notifications</p>
+                <DropdownMenuContent className="w-80">
+                  <p className="p-2 font-medium border-b">Notifications</p>
 
-      {doctorPending.length === 0 && (
-        <p className="p-4 text-sm text-muted-foreground">
-          Aucun nouveau rendez-vous.
-        </p>
-      )}
+                  {doctorPending.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      Aucun nouveau rendez-vous.
+                    </p>
+                  ) : (
+                    doctorPending.map((appt) => (
+                      <DropdownMenuItem
+                        key={appt.id}
+                        className="flex flex-col items-start space-y-1"
+                      >
+                        <span className="font-semibold text-sm">
+                          Nouveau RDV — {appt.patient?.firstName} {appt.patient?.lastName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          📅 {appt.date} — ⏰ {appt.time}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-      {doctorPending.map((appt) => (
-        <DropdownMenuItem
-          key={appt.id}
-          className="flex flex-col items-start space-y-1"
-        >
-          <span className="font-semibold text-sm">
-            Nouveau RDV — {appt.patient?.firstName} {appt.patient?.lastName}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            📅 {appt.date} — ⏰ {appt.time}
-          </span>
-        </DropdownMenuItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
+              {/* Refresh */}
+              <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+                Actualiser
+              </Button>
 
-  {/* 🔄 Existing buttons */}
-  <Button 
-    variant="outline" 
-    onClick={handleRefresh}
-    disabled={refreshing}
-  >
-    <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-    Actualiser
-  </Button>
+              {/* New prescription */}
+              <Button asChild variant="outline">
+                <Link href="/prescriptions/new">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Nouvelle ordonnance
+                </Link>
+              </Button>
 
-  <Button asChild variant="outline">
-    <Link href="/prescriptions/new">
-      <FileText className="w-4 h-4 mr-2" />
-      Nouvelle ordonnance
-    </Link>
-  </Button>
+              {/* See all appointments */}
+              <Button asChild>
+                <Link href="/doctor-dashboard/appointments">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Voir tous les RDV
+                </Link>
+              </Button>
 
-  <Button asChild>
-    <Link href="/doctor-dashboard/appointments">
-      <Calendar className="w-4 h-4 mr-2" />
-      Voir tous les RDV
-    </Link>
-  </Button>
-
-</div>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Bannière démo */}
-        
+      {/* MAIN CONTENT */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">RDV Aujourd'hui</CardTitle>
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.today}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.today === 0 ? 'Aucun rendez-vous' : `${stats.today} rendez-vous programmés`}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cette semaine</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.week}</div>
-              <p className="text-xs text-muted-foreground">
-                Rendez-vous sur 7 jours
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Patients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getUniquePatientsCount()}</div>
-              <p className="text-xs text-muted-foreground">
-                Patients uniques suivis
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En attente</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-              <p className="text-xs text-muted-foreground">
-                RDV à confirmer
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* ⭐ CARD SHOWING ALL APPOINTMENTS */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              📅 Tous les rendez-vous
+              <Badge className="ml-2">{appointments.length}</Badge>
+            </CardTitle>
+          </CardHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Rendez-vous du jour */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CalendarDays className="w-5 h-5 mr-2 text-blue-600" />
-                Rendez-vous aujourd'hui
-                <Badge variant="secondary" className="ml-2">
-                  {todayAppointments.length}
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                {formatDate(new Date().toISOString())}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-  {todayAppointments.length === 0 ? (
-    <div className="text-center py-8">
-      <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-      <p className="mt-4 text-gray-500">Aucun rendez-vous aujourd'hui</p>
-    </div>
-  ) : (
-    <div className="space-y-4">
-      {todayAppointments.map((appointment) => (
-        <div key={appointment.id} className="p-4 border rounded-xl bg-white shadow-sm">
-
-          {/* Header: Time + Status + Actions */}
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="font-mono">
-                {appointment.time}
-              </Badge>
-              {getStatusBadge(appointment.status)}
-            </div>
-
-            <div className="flex space-x-2">
-              {appointment.status === AppointmentStatus.PENDING && (
-                <>
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CONFIRMED)}
+          <CardContent>
+            {appointments.length === 0 ? (
+              <p className="text-gray-500 text-center py-6">
+                Aucun rendez-vous trouvé.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {appointments.map((apt) => (
+                  <div
+                    key={apt.id}
+                    className="p-4 border rounded-lg bg-white shadow-sm hover:bg-gray-50 transition"
                   >
-                    Confirmer
-                  </Button>
+                    <div className="flex justify-between mb-2">
+                      <p className="font-medium">
+                        {apt.patient?.firstName} {apt.patient?.lastName}
+                      </p>
+                      {getStatusBadge(apt.status)}
+                    </div>
 
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleStatusUpdate(appointment.id, AppointmentStatus.CANCELLED)}
-                  >
-                    Annuler
-                  </Button>
-                </>
-              )}
+                    <p className="text-sm text-gray-600">
+                      📅 {apt.date} — ⏰ {apt.time}
+                    </p>
 
-              <Button size="sm" asChild>
-                <Link href={`/prescriptions/new?patientId=${appointment.patientId}&appointmentId=${appointment.id}`}>
-                  Prescrire
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          {/* Patient info */}
-          <p className="font-semibold text-lg">
-            <User className="inline w-4 h-4 mr-2 text-gray-400" />
-            {appointment.patient?.firstName} {appointment.patient?.lastName}
-          </p>
-
-          {/* Reason */}
-          <p className="text-gray-600 mt-1">{appointment.reason}</p>
-
-          {/* Notes */}
-          {appointment.notes && (
-            <div className="mt-3 px-3 py-2 bg-gray-50 text-sm text-gray-700 rounded-md">
-              📝 {appointment.notes}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
-
-          </Card>
-
-          {/* Actions rapides et prochains RDV */}
-          <div className="space-y-8">
-            {/* Actions rapides */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions médicales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button asChild className="w-full justify-start h-14">
-                    <Link href="/prescriptions/new">
-                      <FileText className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Nouvelle ordonnance</div>
-                        <div className="text-sm font-normal">Créer une prescription</div>
-                      </div>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="w-full justify-start h-14">
-                    <Link href="/doctor-dashboard/appointments">
-                      <Calendar className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Gestion des RDV</div>
-                        <div className="text-sm font-normal">Voir tous les rendez-vous</div>
-                      </div>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="w-full justify-start h-14">
-                    <Link href="/prescriptions">
-                      <FileText className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Ordonnances</div>
-                        <div className="text-sm font-normal">Voir l'historique</div>
-                      </div>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="w-full justify-start h-14">
-                    <Link href="/doctor-dashboard/patients">
-                      <Users className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Patients</div>
-                        <div className="text-sm font-normal">Liste des patients</div>
-                      </div>
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Rendez-vous à venir */}
-            {upcomingAppointments.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    Prochains rendez-vous
-                    <Badge variant="secondary" className="ml-2">
-                      {upcomingAppointments.length}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {upcomingAppointments.slice(0, 5).map((appointment) => (
-                      <div key={appointment.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center space-x-3">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <div>
-                            <p className="font-medium text-sm">
-                              {formatDate(appointment.date)} à {appointment.time}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {appointment.patient?.firstName} {appointment.patient?.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500">{appointment.reason}</p>
-                          </div>
-                        </div>
-                        {getStatusBadge(appointment.status)}
-                      </div>
-                    ))}
-                    {upcomingAppointments.length > 5 && (
-                      <Button asChild variant="outline" className="w-full mt-2">
-                        <Link href="/doctor-dashboard/appointments">
-                          Voir tous les {upcomingAppointments.length} rendez-vous
-                        </Link>
-                      </Button>
-                    )}
+                    <p className="text-sm mt-1 text-gray-700">
+                      Motif : {apt.reason}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
       </main>
     </div>
   );
 }
 
-// Page principale avec protection de rôle
 export default function DoctorDashboardPage() {
   return (
     <RoleGuard allowedRoles={[UserRole.DOCTOR]}>

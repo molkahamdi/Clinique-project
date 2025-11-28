@@ -127,4 +127,18 @@ export class AppointmentsService {
     
     return await this.findOne(id);
   }
+
+  // 🔥 Get appointments for a specific doctor (ONLY confirmed)
+async findByDoctorId(doctorId: string): Promise<Appointment[]> {
+  return await this.appointmentRepo.find({
+    where: { 
+      doctorId: doctorId,
+      status: AppointmentStatus.CONFIRMED, 
+    },
+    relations: ['doctor', 'patient'],
+    order: { date: 'ASC', time: 'ASC' }
+  });
+}
+
+
 }
