@@ -36,7 +36,8 @@ import {
   Settings,
   Mail,
   Phone,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 import RoleGuard from '@/components/guards/RoleGuard';
 import { UserRole as AuthUserRole } from '@/types/auth';
@@ -194,6 +195,24 @@ export default function UsersPage() {
               </div>
               
               <div className="flex items-center space-x-3">
+
+                <div className="flex items-center space-x-3 bg">
+              <Button
+                asChild
+                variant="outline"
+                className="
+                border-red-500 
+                text-red-600 
+                hover:text-red-600 
+                hover:bg-red-50 
+                hover:border-red-600
+              "
+              >
+                <Link href="/auth/login">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Déconnexion
+                </Link>
+              </Button>
                
                 <Link href="/users/create">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200">
@@ -203,6 +222,7 @@ export default function UsersPage() {
                 </Link>
               </div>
             </div>
+          </div>
           </div>
         </header>
 

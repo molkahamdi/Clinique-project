@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       setUser(userData);
-      router.push('/dashboard');
+      router.push('/auth/login');
     } catch (error) {
       console.error('Register error:', error);
       throw error;

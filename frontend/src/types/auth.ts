@@ -13,7 +13,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string; // Changé de number à string
+  phone: string;
   role: UserRole;
   speciality?: string;
   createdAt: string;

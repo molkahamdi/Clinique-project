@@ -15,8 +15,6 @@ import {
 import { AppointmentStatus } from "@/types/appointment";
 import { useRouter } from "next/navigation";
 
-
-
 interface Appointment {
   id: string;
   date: string;
@@ -39,7 +37,6 @@ export default function ReceptionistDashboard() {
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const router = useRouter();
-
 
   const fetchStats = async () => {
     try {
@@ -92,18 +89,22 @@ export default function ReceptionistDashboard() {
     }
   };
 
-  // ❌ CANCEL
+  // ❌ CANCEL - Removes appointment from list
   const cancelAppointment = async (id: string) => {
     try {
       await apiClient.updateAppointment(id, {
         status: AppointmentStatus.CANCELLED,
       });
 
-      const updated = appointments.map((appt) =>
-        appt.id === id ? { ...appt, status: AppointmentStatus.CANCELLED } : appt
-      );
+      // Remove the cancelled appointment from the list
+      const updated = appointments.filter((appt) => appt.id !== id);
 
       setAppointments(updated);
+
+      // Update today's appointments if needed
+      const today = new Date().toISOString().split("T")[0];
+      const todayList = updated.filter((appt: Appointment) => appt.date === today);
+      setTodayAppointments(todayList);
 
       const pending = updated.filter(
         (appt) => appt.status.toLowerCase() === "pending"
@@ -246,41 +247,40 @@ export default function ReceptionistDashboard() {
       {/* ================= ALL APPOINTMENTS ================= */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-  <CardTitle className="text-xl font-semibold">
-    Liste de tous les rendez-vous
-  </CardTitle>
+          <CardTitle className="text-xl font-semibold">
+            Liste de tous les rendez-vous
+          </CardTitle>
 
-  {/* Filters section positioned next to title */}
-  <div className="flex items-center gap-4">
+          {/* Filters section positioned next to title */}
+          <div className="flex items-center gap-4">
+            {/* Date Filter */}
+            <input
+              type="date"
+              className="border px-3 py-1 rounded-md"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
 
-    {/* Date Filter */}
-    <input
-      type="date"
-      className="border px-3 py-1 rounded-md"
-      value={filterDate}
-      onChange={(e) => setFilterDate(e.target.value)}
-    />
+            {/* Status Filter */}
+            <select
+              className="border px-3 py-1 rounded-md"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Approuved</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
 
-    {/* Status Filter */}
-    <select
-      className="border px-3 py-1 rounded-md"
-      value={filterStatus}
-      onChange={(e) => setFilterStatus(e.target.value)}
-    >
-      <option value="all">All</option>
-      <option value="pending">Pending</option>
-      <option value="confirmed">Approuved</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-
-    <Button
-  className="bg-blue-600 text-white hover:bg-blue-700"
-  onClick={() => router.push("/agenda")}
->
-  Voir Agenda
-</Button>
-  </div>
-</CardHeader>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => router.push("/agenda")}
+            >
+              Voir Agenda
+            </Button>
+          </div>
+        </CardHeader>
 
         <CardContent className="space-y-4">
           {filteredAppointments.length === 0 && (
@@ -304,17 +304,29 @@ export default function ReceptionistDashboard() {
                 </div>
               </div>
 
-              <Badge
-                className={
-                  appt.status.toLowerCase() === "confirmed"
-                    ? "bg-green-500"
-                    : appt.status.toLowerCase() === "pending"
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
-                }
-              >
-                {appt.status}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${
+                    appt.status.toLowerCase() === "confirmed"
+                      ? "bg-green-500 text-white"
+                      : appt.status.toLowerCase() === "pending"
+                      ? "bg-yellow-500 text-white"
+                      : "bg-red-500 text-white"
+                  }`}
+                >
+                  {appt.status}
+                </span>
+
+                {/* Action Buttons */}
+                {appt.status.toLowerCase() === "confirmed" && (
+                  <button
+                    onClick={() => cancelAppointment(appt.id)}
+                    className="px-4 py-1.5 text-sm font-medium rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+                  >
+                    Annuler
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </CardContent>

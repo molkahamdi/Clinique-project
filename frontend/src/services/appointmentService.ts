@@ -8,17 +8,26 @@ import {
 } from '@/types/appointment';
 import { apiClient } from '@/lib/api';
 
-export const appointmentService = {
+class AppointmentService {
   // ============================================================
-  // 🔹 DOCTORS (real DB only)
+  // 🔹 UUID VALIDATION
+  // ============================================================
+  isValidUUID(id: string): boolean {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  }
+
+  // ============================================================
+  // 🔹 DOCTORS
   // ============================================================
   async getDoctors(): Promise<DoctorInfo[]> {
     console.log('🔍 Loading doctors from API...');
     const doctors = await apiClient.apiCall('/users/doctors');
     return this.formatDoctors(doctors);
-  },
+  }
 
-  formatDoctors(doctors: any[]): DoctorInfo[] {
+  private formatDoctors(doctors: any[]): DoctorInfo[] {
     return doctors.map((doctor: any) => ({
       id: doctor.id,
       firstName: doctor.firstName,
@@ -32,28 +41,28 @@ export const appointmentService = {
       address: doctor.address || 'Clinique',
       clinique: doctor.clinique,
     }));
-  },
+  }
 
   // ============================================================
-  // 🔹 APPOINTMENTS (real DB only)
+  // 🔹 GET APPOINTMENTS
   // ============================================================
   async getAppointments(): Promise<Appointment[]> {
     console.log('🔍 Fetching all appointments...');
     return await apiClient.apiCall('/appointments');
-  },
+  }
 
   async getDoctorAppointments(doctorId: string): Promise<Appointment[]> {
     console.log('🔍 Fetching appointments for doctor:', doctorId);
     return await apiClient.apiCall(`/appointments/doctor/${doctorId}`);
-  },
+  }
 
   async getPatientAppointments(patientId: string): Promise<Appointment[]> {
     console.log('🔍 Fetching appointments for patient:', patientId);
     return await apiClient.apiCall(`/appointments/patient/${patientId}`);
-  },
+  }
 
   async getAppointment(id: string): Promise<Appointment> {
-    console.log('🔍 Fetching appointment details:', id);
+    console.log('🔍 Fetching appointment:', id);
     const appointment = await apiClient.apiCall(`/appointments/${id}`);
 
     if (appointment.doctor) {
@@ -61,48 +70,82 @@ export const appointmentService = {
     }
 
     return appointment;
-  },
+  }
 
   // ============================================================
-  // 🔹 CRUD OPERATIONS (real DB only)
+  // 🔹 CRUD OPERATIONS
   // ============================================================
-  async createAppointment(data: CreateAppointmentDto): Promise<Appointment> {
+  async createAppointment(
+    data: CreateAppointmentDto
+  ): Promise<Appointment> {
     console.log('📋 Creating appointment:', data);
     return await apiClient.apiCall('/appointments', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-  },
+  }
+
+  async updateAppointment(
+    id: string,
+    data: UpdateAppointmentDto
+  ): Promise<Appointment> {
+    console.log('🔄 Updating appointment:', id);
+    return await apiClient.apiCall(`/appointments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
 
   async updateAppointmentStatus(
     id: string,
     status: AppointmentStatus
   ): Promise<Appointment> {
     console.log('🔄 Updating appointment status:', id, status);
-    return await apiClient.apiCall(`/appointments/${id}/status`, {
+
+    // Match backend routes
+    if (status === AppointmentStatus.CONFIRMED) {
+      return await apiClient.apiCall(`/appointments/${id}/confirm`, {
+        method: 'PATCH',
+      });
+    }
+
+    if (status === AppointmentStatus.CANCELLED) {
+      return await apiClient.apiCall(`/appointments/${id}/cancel`, {
+        method: 'PATCH',
+      });
+    }
+
+    if (status === AppointmentStatus.COMPLETED) {
+      return await apiClient.apiCall(`/appointments/${id}/complete`, {
+        method: 'PATCH',
+      });
+    }
+
+    // Default → PATCH /appointments/:id
+    return await apiClient.apiCall(`/appointments/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
-  },
+  }
 
   async cancelAppointment(id: string): Promise<Appointment> {
     console.log('❌ Cancelling appointment:', id);
     return await apiClient.apiCall(`/appointments/${id}/cancel`, {
       method: 'PATCH',
     });
-  },
+  }
 
   async deleteAppointment(id: string): Promise<void> {
     console.log('🗑 Deleting appointment:', id);
     await apiClient.apiCall(`/appointments/${id}`, {
       method: 'DELETE',
     });
-  },
+  }
 
   // ============================================================
   // 🔹 Formatting
   // ============================================================
-  formatDoctorData(doctorData: any): DoctorInfo {
+  private formatDoctorData(doctorData: any): DoctorInfo {
     return {
       id: doctorData.id,
       firstName: doctorData.firstName,
@@ -116,5 +159,8 @@ export const appointmentService = {
       address: doctorData.address,
       clinique: doctorData.clinique,
     };
-  },
-};
+  }
+}
+
+// Export instance
+export const appointmentService = new AppointmentService();

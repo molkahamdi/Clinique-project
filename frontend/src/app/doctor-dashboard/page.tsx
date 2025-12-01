@@ -1,31 +1,29 @@
-// app/doctor-dashboard/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
-import RoleGuard from '@/components/guards/RoleGuard';
-import { UserRole } from '@/types/auth';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+import RoleGuard from "@/components/guards/RoleGuard";
+import { UserRole } from "@/types/auth";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Bell, RefreshCw, FileText, Calendar } from 'lucide-react';
-import { appointmentService } from '@/services/appointmentService';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
+
+import { RefreshCw, FileText, Calendar, LogOut } from "lucide-react";
+
+import { appointmentService } from "@/services/appointmentService";
+import { Appointment, AppointmentStatus } from "@/types/appointment";
 
 function DoctorDashboardContent() {
   const { user } = useAuth();
-  const [doctorPending, setDoctorPending] = useState<Appointment[]>([]);
+
+  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Load data on mount
   useEffect(() => {
     loadDashboardData();
   }, [user?.id]);
@@ -33,23 +31,20 @@ function DoctorDashboardContent() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-
       if (!user?.id) return;
 
-      // Load all appointments for this doctor
+      // Fetch doctor appointments
       const doctorAppointments = await appointmentService.getDoctorAppointments(user.id);
       setAppointments(doctorAppointments);
 
-      // Pending notifications
-      const pendingForDoctor = doctorAppointments.filter(
-        (apt) => apt.status === AppointmentStatus.PENDING
-      );
-      setDoctorPending(pendingForDoctor);
-      
+      // Pending appointments
+      const pending = doctorAppointments.filter((apt) => apt.status === AppointmentStatus.PENDING);
+      setPendingAppointments(pending);
+
     } catch (err) {
       console.error("Error loading doctor dashboard:", err);
       setAppointments([]);
-      setDoctorPending([]);
+      setPendingAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -61,21 +56,18 @@ function DoctorDashboardContent() {
     setRefreshing(false);
   };
 
+  // Render badge component
   const getStatusBadge = (status: AppointmentStatus | string) => {
-  const config = {
-    PENDING: { label: "En attente", variant: "secondary" },
-    CONFIRMED: { label: "Confirmé", variant: "default" },
-    CANCELLED: { label: "Annulé", variant: "destructive" },
-    COMPLETED: { label: "Terminé", variant: "outline" },
-  } as const; //  <-- IMPORTANT FIX
+    const config = {
+      PENDING: { label: "En attente", variant: "secondary" },
+      CONFIRMED: { label: "Confirmé", variant: "default" },
+      CANCELLED: { label: "Annulé", variant: "destructive" },
+      COMPLETED: { label: "Terminé", variant: "outline" },
+    } as const;
 
-  const key = status.toUpperCase() as keyof typeof config;
-  const st = config[key];
-
-  return <Badge variant={st.variant}>{st.label}</Badge>;
-};
-
-
+    const key = status.toUpperCase() as keyof typeof config;
+    return <Badge variant={config[key].variant}>{config[key].label}</Badge>;
+  };
 
   if (loading) {
     return (
@@ -91,7 +83,6 @@ function DoctorDashboardContent() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 Bonjour, Dr. {user?.firstName} {user?.lastName}
@@ -99,54 +90,26 @@ function DoctorDashboardContent() {
               <p className="text-gray-600">Tableau de bord</p>
             </div>
 
-            {/* RIGHT SIDE */}
-            <div className="flex items-center space-x-3">
-
-              {/* Notification */}
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <div className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100">
-                    <Bell className="w-6 h-6 text-gray-700" />
-                    {doctorPending.length > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                        {doctorPending.length}
-                      </span>
-                    )}
-                  </div>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent className="w-80">
-                  <p className="p-2 font-medium border-b">Notifications</p>
-
-                  {doctorPending.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground">
-                      Aucun nouveau rendez-vous.
-                    </p>
-                  ) : (
-                    doctorPending.map((appt) => (
-                      <DropdownMenuItem
-                        key={appt.id}
-                        className="flex flex-col items-start space-y-1"
-                      >
-                        <span className="font-semibold text-sm">
-                          Nouveau RDV — {appt.patient?.firstName} {appt.patient?.lastName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          📅 {appt.date} — ⏰ {appt.time}
-                        </span>
-                      </DropdownMenuItem>
-                    ))
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Refresh */}
-              <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-                Actualiser
+            <div className="flex items-center space-x-3 bg">
+              <Button
+                asChild
+                variant="outline"
+                className="
+                border-red-500 
+                text-red-600 
+                hover:text-red-600 
+                hover:bg-red-50 
+                hover:border-red-600
+              "
+              >
+                <Link href="/auth/login">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Déconnexion
+                </Link>
               </Button>
 
-              {/* New prescription */}
+
+              {/* Create prescription */}
               <Button asChild variant="outline">
                 <Link href="/prescriptions/new">
                   <FileText className="w-4 h-4 mr-2" />
@@ -161,16 +124,13 @@ function DoctorDashboardContent() {
                   Voir tous les RDV
                 </Link>
               </Button>
-
             </div>
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
-        {/* ⭐ CARD SHOWING ALL APPOINTMENTS */}
+      {/* MAIN */}
+      <main className="max-w-7xl mx-auto px-4 py-10">
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -211,7 +171,6 @@ function DoctorDashboardContent() {
             )}
           </CardContent>
         </Card>
-
       </main>
     </div>
   );

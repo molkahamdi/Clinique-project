@@ -123,6 +123,7 @@ export default function CliniquesPage() {
               <p className="text-gray-600 mt-1">Administration complète de votre réseau de cliniques</p>
             </div>
           </div>
+          
           <Button 
             onClick={() => router.push('/cliniques/new')}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"

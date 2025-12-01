@@ -192,15 +192,7 @@ export default function AgendaPage() {
         </div>
       </section>
 
-      {/* ================= SEARCH BAR ================= */}
-      <div className="max-w-xl mx-auto -mt-8 relative z-20 px-6 mb-10">
-        <Input
-          placeholder="Rechercher un patient, email ou téléphone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-4 py-6 text-lg rounded-xl shadow-lg"
-        />
-      </div>
+      
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="flex-1 mt-12 pb-20">

@@ -10,6 +10,7 @@ export class AppointmentsService {
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
+    
   ) {}
 
   async create(createAppointmentDto: CreateAppointmentDto): Promise<Appointment> {
