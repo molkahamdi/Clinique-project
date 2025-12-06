@@ -283,53 +283,71 @@ export default function ReceptionistDashboard() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {filteredAppointments.length === 0 && (
-            <p className="text-muted-foreground">Aucun rendez-vous trouvé.</p>
-          )}
+  {filteredAppointments.length === 0 && (
+    <p className="text-muted-foreground">Aucun rendez-vous trouvé.</p>
+  )}
 
-          {filteredAppointments.map((appt) => (
-            <div
-              key={appt.id}
-              className="flex items-center justify-between p-4 border rounded-lg"
-            >
-              <div className="flex items-center gap-3">
-                <CalendarDays className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium">
-                    {appt.date} — {appt.time}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {appt.patient?.firstName} {appt.patient?.lastName}
-                  </p>
-                </div>
-              </div>
+  {filteredAppointments.map((appt) => (
+    <div
+      key={appt.id}
+      className="flex items-center justify-between p-4 border rounded-lg"
+    >
+      {/* LEFT SIDE — DATE + PATIENT */}
+      <div className="flex items-center gap-3">
+        <CalendarDays className="w-5 h-5 text-primary" />
+        <div>
+          <p className="font-medium">
+            {appt.date} — {appt.time}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {appt.patient?.firstName} {appt.patient?.lastName}
+          </p>
+        </div>
+      </div>
 
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${
-                    appt.status.toLowerCase() === "confirmed"
-                      ? "bg-green-500 text-white"
-                      : appt.status.toLowerCase() === "pending"
-                      ? "bg-yellow-500 text-white"
-                      : "bg-red-500 text-white"
-                  }`}
-                >
-                  {appt.status}
-                </span>
+      {/* RIGHT SIDE — STATUS + ACTION BUTTONS */}
+      <div className="flex items-center gap-3">
+        {/* STATUS BADGE */}
+        <span
+          className={`px-4 py-1.5 text-sm font-medium rounded-full ${
+            appt.status.toLowerCase() === "confirmed"
+              ? "bg-green-500 text-white"
+              : appt.status.toLowerCase() === "pending"
+              ? "bg-yellow-500 text-white"
+              : "bg-red-500 text-white"
+          }`}
+        >
+          {appt.status}
+        </span>
 
-                {/* Action Buttons */}
-                {appt.status.toLowerCase() === "confirmed" && (
-                  <button
-                    onClick={() => cancelAppointment(appt.id)}
-                    className="px-4 py-1.5 text-sm font-medium rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
-                  >
-                    Annuler
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
+        {/* ❌ CANCEL BUTTON — ONLY IF CONFIRMED */}
+        {appt.status.toLowerCase() === "confirmed" && (
+          <button
+            onClick={() => cancelAppointment(appt.id)}
+            className="px-4 py-1.5 text-sm font-medium rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+          >
+            Annuler
+          </button>
+        )}
+
+        {/* ⭐ CREATE INVOICE BUTTON — ONLY IF CONFIRMED */}
+        {appt.status.toLowerCase() === "confirmed" && (
+          <button
+            onClick={() =>
+              router.push(
+                `/receptionist-dashboard/invoice/new?appointmentId=${appt.id}`
+              )
+            }
+            className="px-4 py-1.5 text-sm font-medium rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+          >
+            Créer Facture
+          </button>
+        )}
+      </div>
+    </div>
+  ))}
+</CardContent>
+
       </Card>
     </div>
   );

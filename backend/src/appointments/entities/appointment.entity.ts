@@ -2,6 +2,9 @@ import { Entity, Column, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 't
 import { TimeStamEntity } from 'src/database/timestamp-entity';
 import { Patient } from 'src/users/entities/patient.entity';
 import { Doctor } from 'src/users/entities/doctor.entity';
+import { Invoice } from "src/invoices/entities/invoice.entity";
+import { OneToMany } from "typeorm";
+
 
 export enum AppointmentStatus {
   PENDING = 'pending',
@@ -47,4 +50,8 @@ export class Appointment extends TimeStamEntity {
 
   @Column()
   doctorId: string;
+
+  @OneToMany(() => Invoice, (invoice) => invoice.appointment)
+invoices: Invoice[];
+
 }

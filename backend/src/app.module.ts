@@ -12,6 +12,7 @@ import { MedicalServicesModule } from './medical-services/medical-services.modul
 import { EquipmentModule } from './equipment/equipment.module';
 import { MedicationsModule } from './medications/medications.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 
 @Module({
@@ -31,6 +32,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
     EquipmentModule,
     MedicationsModule,
     AppointmentsModule,
+    InvoicesModule,
     
  
   ],
