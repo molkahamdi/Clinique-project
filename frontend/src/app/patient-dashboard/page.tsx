@@ -21,13 +21,47 @@ export default function PatientDashboard() {
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
       loadAppointments();
       loadPrescriptions();
+      loadInvoices();
     }
   }, [user]);
+
+  const loadInvoices = async () => {
+    if (!user?.id) return;   // ✅ FIX: TS error + safe check
+
+    try {
+      setInvoicesLoading(true);
+
+      const res = await fetch(`http://localhost:3001/invoices/patient/${user.id}`);
+      const response = await res.json();
+
+      console.log("INVOICES RESPONSE:", response);
+
+      // ✅ Auto-detects all possible shapes
+      if (Array.isArray(response)) {
+        setInvoices(response);
+      } else if (Array.isArray(response.data)) {
+        setInvoices(response.data);
+      } else if (Array.isArray(response.invoices)) {
+        setInvoices(response.invoices);
+      } else {
+        setInvoices([]);  // fallback
+      }
+
+    } catch (err) {
+      console.error("Error loading invoices:", err);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+
 
   const loadAppointments = async () => {
     try {
@@ -55,10 +89,11 @@ export default function PatientDashboard() {
     }
   };
 
+
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       setError(null);
-      
+
       // Trouver le rendez-vous à annuler
       const appointment = appointments.find(a => a.id === appointmentId);
       if (!appointment) return;
@@ -72,14 +107,14 @@ export default function PatientDashboard() {
       if (hoursDiff < 24) {
         const hoursRemaining = Math.floor(hoursDiff);
         const minutesRemaining = Math.floor((hoursDiff - hoursRemaining) * 60);
-        
+
         let timeMessage = '';
         if (hoursRemaining > 0) {
           timeMessage = `Il reste ${hoursRemaining} heure(s) et ${minutesRemaining} minute(s) avant le rendez-vous.`;
         } else {
           timeMessage = `Il reste moins d'une heure avant le rendez-vous.`;
         }
-        
+
         setError(`L'annulation doit être effectuée au moins 24 heures avant le rendez-vous. 
                   ${timeMessage} 
                   Veuillez contacter directement la clinique au 01 23 45 67 89.`);
@@ -87,32 +122,32 @@ export default function PatientDashboard() {
       }
 
       if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est irréversible.')) return;
-      
+
       setCancellingId(appointmentId);
-      
+
       // Mise à jour optimiste
-      setAppointments(prev => prev.map(apt => 
-        apt.id === appointmentId 
+      setAppointments(prev => prev.map(apt =>
+        apt.id === appointmentId
           ? { ...apt, status: AppointmentStatus.CANCELLED }
           : apt
       ));
 
       const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
-      
+
       // Mise à jour avec les données réelles
-      setAppointments(prev => prev.map(apt => 
-        apt.id === appointmentId 
+      setAppointments(prev => prev.map(apt =>
+        apt.id === appointmentId
           ? updatedAppointment
           : apt
       ));
-      
+
       alert('Rendez-vous annulé avec succès !');
     } catch (error: any) {
       console.error('Error cancelling appointment:', error);
-      
+
       // Afficher le message d'erreur spécifique du backend
       setError(error.message || 'Erreur lors de l\'annulation du rendez-vous');
-      
+
       // Recharger les données pour éviter les incohérences
       await loadAppointments();
     } finally {
@@ -133,7 +168,7 @@ export default function PatientDashboard() {
 
   const getStatusBadge = (status: AppointmentStatus) => {
     const baseClasses = "border font-medium text-xs";
-    
+
     switch (status) {
       case AppointmentStatus.PENDING:
         return (
@@ -193,8 +228,8 @@ export default function PatientDashboard() {
     return prescription.items?.filter(item => item.urgent === true).length || 0;
   };
 
-  const upcomingAppointments = appointments.filter(a => 
-    a.status === AppointmentStatus.PENDING || 
+  const upcomingAppointments = appointments.filter(a =>
+    a.status === AppointmentStatus.PENDING ||
     a.status === AppointmentStatus.CONFIRMED
   );
 
@@ -225,9 +260,9 @@ export default function PatientDashboard() {
                 </h1>
                 <p className="text-slate-600 font-medium">Votre espace santé personnel</p>
               </div>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleLogout}
                 className="sm:hidden border-red-200 text-red-600 hover:bg-red-50"
@@ -235,7 +270,7 @@ export default function PatientDashboard() {
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Button asChild className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25">
                 <Link href="/patient-dashboard/new-appointment">
@@ -243,9 +278,9 @@ export default function PatientDashboard() {
                   Nouveau rendez-vous
                 </Link>
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleLogout}
                 className="hidden sm:flex border-red-200 text-red-600 hover:bg-red-50"
@@ -279,14 +314,14 @@ export default function PatientDashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{appointments.length}</div>
               <p className="text-xs text-slate-500 mt-1">
-                {upcomingAppointments.length > 0 
-                  ? `${upcomingAppointments.length} à venir` 
+                {upcomingAppointments.length > 0
+                  ? `${upcomingAppointments.length} à venir`
                   : 'Aucun RDV à venir'
                 }
               </p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-white to-emerald-50/50 border-emerald-100 shadow-lg shadow-emerald-500/5 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-slate-600">Ordonnances</CardTitle>
@@ -301,7 +336,7 @@ export default function PatientDashboard() {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-white to-violet-50/50 border-violet-100 shadow-lg shadow-violet-500/5 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-slate-600">Médicaments</CardTitle>
@@ -312,14 +347,14 @@ export default function PatientDashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{totalMedications}</div>
               <p className="text-xs text-slate-500 mt-1">
-                {totalUrgentMedications > 0 
-                  ? `${totalUrgentMedications} urgent(s)` 
+                {totalUrgentMedications > 0
+                  ? `${totalUrgentMedications} urgent(s)`
                   : 'Traitements en cours'
                 }
               </p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-white to-amber-50/50 border-amber-100 shadow-lg shadow-amber-500/5 hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-slate-600">Prochain RDV</CardTitle>
@@ -338,9 +373,9 @@ export default function PatientDashboard() {
 
         {/* Navigation par onglets */}
         <Tabs defaultValue="appointments" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100/50 rounded-2xl">
-            <TabsTrigger 
-              value="appointments" 
+          <TabsList className="grid w-full grid-cols-3 p-1 bg-slate-100/50 rounded-2xl">
+            <TabsTrigger
+              value="appointments"
               className="flex items-center space-x-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
               <Calendar className="w-4 h-4" />
@@ -349,8 +384,9 @@ export default function PatientDashboard() {
                 {appointments.length}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger 
-              value="prescriptions" 
+
+            <TabsTrigger
+              value="prescriptions"
               className="flex items-center space-x-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
               <FileText className="w-4 h-4" />
@@ -359,7 +395,13 @@ export default function PatientDashboard() {
                 {prescriptions.length}
               </Badge>
             </TabsTrigger>
+
+            {/* ✅ Here is what you asked for */}
+            <TabsTrigger value="invoices">
+              Mes Factures
+            </TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="appointments" className="space-y-4">
             <Card className="border-slate-200/60 shadow-lg">
@@ -458,6 +500,7 @@ export default function PatientDashboard() {
             </Card>
           </TabsContent>
 
+
           <TabsContent value="prescriptions" className="space-y-4">
             <Card className="border-slate-200/60 shadow-lg">
               <CardHeader className="pb-4">
@@ -508,7 +551,7 @@ export default function PatientDashboard() {
                                   )}
                                 </div>
                               </div>
-                              
+
                               <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-3">
                                 <div className="flex items-center font-medium">
                                   <Stethoscope className="h-4 w-4 mr-1.5 text-slate-400" />
@@ -536,11 +579,10 @@ export default function PatientDashboard() {
                                   {prescription.items?.slice(0, 3).map((item, index) => (
                                     <span
                                       key={index}
-                                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${
-                                        item.urgent === true 
-                                          ? 'bg-red-100 text-red-800 border-red-200' 
-                                          : 'bg-blue-100 text-blue-800 border-blue-200/60'
-                                      }`}
+                                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${item.urgent === true
+                                        ? 'bg-red-100 text-red-800 border-red-200'
+                                        : 'bg-blue-100 text-blue-800 border-blue-200/60'
+                                        }`}
                                     >
                                       <Pill className="w-3 h-3 mr-1.5" />
                                       {item.medicationName}
@@ -573,6 +615,83 @@ export default function PatientDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="invoices" className="space-y-4">
+            <Card className="border-slate-200/60 shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2 text-slate-800">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                  <span>Mes Factures</span>
+                </CardTitle>
+                <CardDescription>
+                  Historique des paiements et factures générées par la clinique
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                {invoicesLoading ? (
+                  <p className="text-center py-6 text-slate-500">Chargement...</p>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText className="h-8 w-8 text-indigo-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                      Aucune facture disponible
+                    </h3>
+                    <p className="text-slate-600 max-w-sm mx-auto">
+                      Vos factures apparaîtront ici après vos consultations.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {invoices.map((inv: any) => (
+                      <div
+                        key={inv.id}
+                        className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-white border border-slate-200/60 rounded-xl hover:shadow-lg hover:border-indigo-200 transition-all duration-300"
+                      >
+                        <div className="flex items-start space-x-4">
+                          <div className="flex-shrink-0 w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center">
+                            <FileText className="h-6 w-6 text-indigo-600" />
+                          </div>
+
+                          <div>
+                            <p className="text-lg font-semibold text-slate-800">
+                              Facture #{inv.invoiceNumber}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              Consultation du : {inv.appointment?.date}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              Docteur : Dr. {inv.appointment?.doctor?.firstName}{" "}
+                              {inv.appointment?.doctor?.lastName}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 sm:mt-0 flex flex-col items-end">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {inv.totalFinal?.toFixed(2)} TND
+                          </p>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="mt-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                          >
+                            <Link href={`/invoice/${inv.id}`}>
+                              Voir la facture
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </main>
     </div>

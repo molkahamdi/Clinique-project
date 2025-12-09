@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { 
-  Printer, 
-  FileDown, 
-  FileText, 
-  User, 
-  Stethoscope, 
-  Calendar, 
-  DollarSign, 
+import {
+  Printer,
+  FileDown,
+  FileText,
+  User,
+  Stethoscope,
+  Calendar,
+  DollarSign,
   Receipt,
   CheckCircle2,
   Clock
@@ -90,13 +90,22 @@ export default function InvoiceDetailsPage() {
                 <h1 className="text-3xl font-bold text-gray-900">
                   Facture #{invoice.invoiceNumber}
                 </h1>
-                <div className="flex items-center gap-2 mt-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="text-green-600 font-medium">Payée</span>
-                </div>
+                {/* --- BUTTON INSTEAD OF TEXT --- */}
+                <button
+                  className="
+        mt-2 px-4 py-1.5
+        bg-green-100 text-green-700 
+        rounded-full font-medium text-sm
+        border border-green-300
+        hover:bg-green-200 transition
+      "
+                  disabled
+                >
+                  Payée
+                </button>
               </div>
             </div>
-            
+
             {/* Date and Print Button */}
             <div className="flex flex-col items-end gap-3">
               <div className="bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-2 rounded-xl border border-green-200">
@@ -107,7 +116,7 @@ export default function InvoiceDetailsPage() {
                   </span>
                 </div>
               </div>
-              
+
               <Button
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 onClick={() => window.print()}

@@ -71,5 +71,17 @@ async getInvoiceById(invoiceId: string) {
   return invoice;
 }
 
+async getInvoicesByPatient(patientId: string) {
+  return this.invoiceRepo.find({
+    where: {
+      appointment: {
+        patient: { id: patientId }
+      }
+    },
+    relations: ["appointment", "appointment.patient", "appointment.doctor"]
+  });
+}
+
+
 
 }

@@ -30,5 +30,18 @@ getInvoiceById(@Param("invoiceId") invoiceId: string) {
   return this.invoiceService.getInvoiceById(invoiceId);
 }
 
+// @Get("patient/:patientId")
+// async getByPatient(@Param("patientId") patientId: string) {
+//   return this.invoiceService.getInvoicesByPatient(patientId);
+// }
+
+@Get('patient/:patientId')
+async getInvoicesByPatient(@Param('patientId') patientId: string) {
+  return this.invoiceService.getInvoicesByPatient(patientId);
+}
+
+
+
+
 
 }
