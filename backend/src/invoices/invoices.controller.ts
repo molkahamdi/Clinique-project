@@ -40,7 +40,10 @@ async getInvoicesByPatient(@Param('patientId') patientId: string) {
   return this.invoiceService.getInvoicesByPatient(patientId);
 }
 
-
+@Post("pay/:invoiceId")
+createPayment(@Param("invoiceId") invoiceId: string) {
+  return this.invoiceService.createPaymentSession(invoiceId);
+}
 
 
 
