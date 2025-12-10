@@ -33,7 +33,7 @@ export default function PatientDashboard() {
   }, [user]);
 
   const loadInvoices = async () => {
-    if (!user?.id) return;   // ✅ FIX: TS error + safe check
+    if (!user?.id) return;
 
     try {
       setInvoicesLoading(true);
@@ -43,7 +43,7 @@ export default function PatientDashboard() {
 
       console.log("INVOICES RESPONSE:", response);
 
-      // ✅ Auto-detects all possible shapes
+      
       if (Array.isArray(response)) {
         setInvoices(response);
       } else if (Array.isArray(response.data)) {
@@ -51,7 +51,7 @@ export default function PatientDashboard() {
       } else if (Array.isArray(response.invoices)) {
         setInvoices(response.invoices);
       } else {
-        setInvoices([]);  // fallback
+        setInvoices([]);
       }
 
     } catch (err) {
@@ -94,11 +94,11 @@ export default function PatientDashboard() {
     try {
       setError(null);
 
-      // Trouver le rendez-vous à annuler
+      
       const appointment = appointments.find(a => a.id === appointmentId);
       if (!appointment) return;
 
-      // Vérification côté client pour éviter les appels API inutiles
+      
       const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
       const now = new Date();
       const timeDiff = appointmentDateTime.getTime() - now.getTime();
@@ -125,7 +125,7 @@ export default function PatientDashboard() {
 
       setCancellingId(appointmentId);
 
-      // Mise à jour optimiste
+      
       setAppointments(prev => prev.map(apt =>
         apt.id === appointmentId
           ? { ...apt, status: AppointmentStatus.CANCELLED }
@@ -134,7 +134,7 @@ export default function PatientDashboard() {
 
       const updatedAppointment = await appointmentService.cancelAppointment(appointmentId);
 
-      // Mise à jour avec les données réelles
+      
       setAppointments(prev => prev.map(apt =>
         apt.id === appointmentId
           ? updatedAppointment
@@ -145,10 +145,10 @@ export default function PatientDashboard() {
     } catch (error: any) {
       console.error('Error cancelling appointment:', error);
 
-      // Afficher le message d'erreur spécifique du backend
+      
       setError(error.message || 'Erreur lors de l\'annulation du rendez-vous');
 
-      // Recharger les données pour éviter les incohérences
+      
       await loadAppointments();
     } finally {
       setCancellingId(null);

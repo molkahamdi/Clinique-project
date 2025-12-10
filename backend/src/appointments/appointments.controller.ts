@@ -34,7 +34,6 @@ export class AppointmentsController {
     return this.appointmentsService.findByPatientId(patientId);
   }
 
-  // ✅ CORRECT SINGLE ROUTE FOR DOCTOR
   @Get('doctor/:doctorId')
   @Roles(userRole.DOCTOR, userRole.ADMIN, userRole.RECEP)
   getDoctorAppointments(@Param('doctorId') doctorId: string) {

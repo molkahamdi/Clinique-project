@@ -12,5 +12,5 @@ export class Doctor extends User {
     appointments: Appointment[];
 
     @Column({ nullable: true, default: '' })
-    speciality: string; // Toujours une string, mais peut être vide
+    speciality: string;
 }

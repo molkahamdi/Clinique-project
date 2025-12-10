@@ -14,7 +14,7 @@ export class InvoicesController {
     return this.invoiceService.createInvoice(appointmentId, dto);
   }
 
-  // ✅ NEW ROUTE: Get invoice from appointmentId
+  // NEW ROUTE: Get invoice from appointmentId
   @Get("by-appointment/:appointmentId")
   getInvoiceByAppointment(@Param("appointmentId") appointmentId: string) {
     return this.invoiceService.getInvoiceByAppointment(appointmentId);

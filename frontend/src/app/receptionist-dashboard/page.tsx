@@ -33,7 +33,7 @@ export default function ReceptionistDashboard() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  // 🔎 FILTRES
+  // FILTRES
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function ReceptionistDashboard() {
       );
       setPendingCount(pending.length);
     } catch (error) {
-      console.error("❌ Error fetching stats:", error);
+      console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function ReceptionistDashboard() {
     fetchStats();
   }, []);
 
-  // ✅ CONFIRM
+  // CONFIRM
   const confirmAppointment = async (id: string) => {
     try {
       await apiClient.updateAppointment(id, {
@@ -85,11 +85,11 @@ export default function ReceptionistDashboard() {
       );
       setPendingCount(pending.length);
     } catch (error) {
-      console.error("❌ Error confirming appointment:", error);
+      console.error("Error confirming appointment:", error);
     }
   };
 
-  // ❌ CANCEL - Removes appointment from list
+  // CANCEL - Removes appointment from list
   const cancelAppointment = async (id: string) => {
     try {
       await apiClient.updateAppointment(id, {
@@ -111,11 +111,11 @@ export default function ReceptionistDashboard() {
       );
       setPendingCount(pending.length);
     } catch (error) {
-      console.error("❌ Error cancelling appointment:", error);
+      console.error("Error cancelling appointment:", error);
     }
   };
 
-  // 🧮 LISTE FILTRÉE
+  // LISTE FILTRÉE
   const filteredAppointments = appointments.filter((appt) => {
     const matchesDate = filterDate ? appt.date === filterDate : true;
     const matchesStatus =
@@ -134,7 +134,7 @@ export default function ReceptionistDashboard() {
           <p className="text-muted-foreground">Tableau de bord administratif</p>
         </div>
 
-        {/* 🔔 NOTIFICATIONS */}
+        {/* NOTIFICATIONS */}
         <DropdownMenu>
           <DropdownMenuTrigger>
             <div className="relative cursor-pointer">
@@ -320,7 +320,7 @@ export default function ReceptionistDashboard() {
           {appt.status}
         </span>
 
-        {/* ❌ CANCEL BUTTON — ONLY IF CONFIRMED */}
+        {/* CANCEL BUTTON — ONLY IF CONFIRMED */}
         {appt.status.toLowerCase() === "confirmed" && (
           <button
             onClick={() => cancelAppointment(appt.id)}
@@ -330,7 +330,7 @@ export default function ReceptionistDashboard() {
           </button>
         )}
 
-        {/* ⭐ CREATE INVOICE BUTTON — ONLY IF CONFIRMED */}
+        {/* CREATE INVOICE BUTTON — ONLY IF CONFIRMED */}
         {appt.status.toLowerCase() === "confirmed" && (
           <button
             onClick={() =>

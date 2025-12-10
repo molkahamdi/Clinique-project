@@ -56,7 +56,6 @@ export class AppointmentsService {
   async cancel(id: string): Promise<Appointment> {
     const appointment = await this.findOne(id);
     
-    // Vérifier si l'annulation est possible
     if (appointment.status === AppointmentStatus.CANCELLED) {
       throw new BadRequestException('Ce rendez-vous est déjà annulé');
     }
@@ -65,7 +64,6 @@ export class AppointmentsService {
       throw new BadRequestException('Impossible d\'annuler un rendez-vous déjà terminé');
     }
 
-    // Vérifier si l'annulation est faite à temps (au moins 24h à l'avance)
     const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
     const now = new Date();
     const timeDiff = appointmentDateTime.getTime() - now.getTime();
@@ -75,7 +73,7 @@ export class AppointmentsService {
       throw new BadRequestException('L\'annulation doit être effectuée au moins 24 heures avant le rendez-vous');
     }
 
-    // Mettre à jour le statut en base de données
+    
     await this.appointmentRepo.update(id, { 
       status: AppointmentStatus.CANCELLED
     });
@@ -91,7 +89,7 @@ export class AppointmentsService {
     }
   }
 
-  // Méthode pour récupérer tous les rendez-vous
+
   async findAll(): Promise<Appointment[]> {
     return await this.appointmentRepo.find({
       relations: ['doctor', 'patient'],
@@ -99,7 +97,6 @@ export class AppointmentsService {
     });
   }
 
-  // Méthode pour confirmer un rendez-vous
   async confirm(id: string): Promise<Appointment> {
     const appointment = await this.findOne(id);
     
@@ -114,7 +111,6 @@ export class AppointmentsService {
     return await this.findOne(id);
   }
 
-  // Méthode pour marquer comme terminé
   async complete(id: string): Promise<Appointment> {
     const appointment = await this.findOne(id);
     
@@ -129,7 +125,6 @@ export class AppointmentsService {
     return await this.findOne(id);
   }
 
-  // 🔥 Get appointments for a specific doctor (ONLY confirmed)
 async findByDoctorId(doctorId: string): Promise<Appointment[]> {
   return await this.appointmentRepo.find({
     where: { 

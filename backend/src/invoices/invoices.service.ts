@@ -17,9 +17,6 @@ export class InvoicesService {
     @InjectRepository(Appointment)
     private apptRepo: Repository<Appointment>,
   ) {
-    // *************************************
-    // Prevent crashes if env values missing
-    // *************************************
     const secret = process.env.STRIPE_SECRET_KEY;
     if (!secret) {
       throw new Error("❌ STRIPE_SECRET_KEY is missing in .env");
@@ -121,8 +118,6 @@ export class InvoicesService {
       throw new NotFoundException("Invoice not found");
     }
 
-    // IMPORTANT: Stripe does NOT support TND directly.
-    // Use USD or EUR OR create a custom workaround.
     const currency = "usd";
 
     const session = await this.stripe.checkout.sessions.create({
@@ -135,7 +130,7 @@ export class InvoicesService {
             product_data: {
               name: `Facture #${invoice.invoiceNumber}`,
             },
-            unit_amount: Math.round(invoice.totalFinal * 100), // convert
+            unit_amount: Math.round(invoice.totalFinal * 100),
           },
           quantity: 1,
         },

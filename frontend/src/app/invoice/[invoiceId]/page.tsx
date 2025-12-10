@@ -19,7 +19,7 @@ import {
 export default function InvoiceDetailsPage() {
   const { invoiceId } = useParams();
   const searchParams = useSearchParams();
-  const status = searchParams.get("status"); // <-- Stripe redirect status
+  const status = searchParams.get("status"); //stripe
 
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -60,9 +60,7 @@ export default function InvoiceDetailsPage() {
     }
   };
 
-  // -------------------------------
-  // ⏳ LOADING UI
-  // -------------------------------
+ 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
@@ -92,16 +90,11 @@ export default function InvoiceDetailsPage() {
   const patient = appointment.patient;
   const doctor = appointment.doctor;
 
-  // -------------------------------
-  // MAIN PAGE UI
-  // -------------------------------
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-8 px-4">
       <div className="max-w-5xl mx-auto">
-
-        {/* ============================== */}
         {/* ✔ SUCCESS PAYMENT MESSAGE */}
-        {/* ============================== */}
         {status === "success" && (
           <div className="mb-6 bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-xl flex items-center gap-3 shadow">
             <CheckCircle2 className="w-5 h-5" />
